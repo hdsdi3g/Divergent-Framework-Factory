@@ -36,6 +36,9 @@ public class TestSingleCar extends TestCase {
 		assertNull(sc.getColor());
 		assertNull(sc.getDont_configure_me());
 		assertTrue(sc.isValid_constructor());
+		assertNull(sc.getPossible_wheel_type());
+		assertNull(sc.getPassager_names());
+		assertNull(sc.getPoints_by_names());
 	}
 	
 	public void testFactoryWithConf() throws ReflectiveOperationException {
@@ -46,6 +49,9 @@ public class TestSingleCar extends TestCase {
 		assertNull(sc.getColor());
 		assertNull(sc.getDont_configure_me());
 		assertTrue(sc.isValid_constructor());
+		assertNull(sc.getPossible_wheel_type());
+		assertNull(sc.getPassager_names());
+		assertNull(sc.getPoints_by_names());
 	}
 	
 }

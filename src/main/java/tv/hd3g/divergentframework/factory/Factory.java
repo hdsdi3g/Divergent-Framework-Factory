@@ -42,6 +42,7 @@ import com.google.common.reflect.ClassPath.ClassInfo;
 import com.google.gson.JsonPrimitive;
 
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import tv.hd3g.divergentframework.factory.annotations.Configurable;
 
 /**
  * Create Objects and search Class
@@ -130,6 +131,8 @@ public class Factory {
 	}
 	
 	public <T> T create(Class<T> from_class) throws ReflectiveOperationException {
+		// TODO get SingleInstance
+		
 		checkIsAccessibleClass(from_class, true);
 		
 		Constructor<?> constructor = class_constructor.computeIfAbsent(from_class, cl -> {
@@ -144,15 +147,19 @@ public class Factory {
 			return null;
 		});
 		
-		// TODO add ConfigurationUtility injection call
-		// TODO get SingleInstance
-		
 		if (constructor == null) {
 			return from_class.getDeclaredConstructor().newInstance();
 		}
 		
 		@SuppressWarnings("unchecked")
 		T result = (T) constructor.newInstance();
+		
+		if (result instanceof Configurable) {
+			// TODO push result to ConfigurationUtility
+			// TODO behavior if the conf is missing... return null ?
+		}
+		
+		// TODO add to SingleInstance if needed
 		
 		return result;
 	}

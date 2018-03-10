@@ -14,18 +14,21 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.validation;
+package tv.hd3g.divergentframework.factory.annotations;
 
-import java.util.function.Predicate;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-public class NotNullNotEmptyValidator extends DefaultValidator {
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+
+@Retention(RUNTIME)
+@Target(FIELD)
+public @interface ConfigurableGeneric {
 	
-	public Predicate<String> getValidator() {
-		return value -> {
-			if (value == null) {
-				return false;
-			}
-			return value.isEmpty() == false;
-		};
-	}
+	/**
+	 * @return the type to cast with
+	 */
+	Class<?> value();
+	
 }

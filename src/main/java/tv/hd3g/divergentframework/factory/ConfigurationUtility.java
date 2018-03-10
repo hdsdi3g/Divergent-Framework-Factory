@@ -16,35 +16,75 @@
 */
 package tv.hd3g.divergentframework.factory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.LinkedHashMap;
 
 import org.apache.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
+import tv.hd3g.divergentframework.factory.annotations.Configurable;
+
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// XXX create backend / inject conf files + vars
+	// XXX inject conf files + vars + env
 	
-	private final HashMap<String, ClassEntry> entry_tree;
+	private final LinkedHashMap<String, ClassEntry> configured_instances;
 	
-	public ConfigurationUtility() {
-		entry_tree = new HashMap<>();
+	public ConfigurationUtility() {// TODO set a Factory here
+		configured_instances = new LinkedHashMap<>();
 		Yaml y = new Yaml();
 	}
 	
-	class ClassEntry {
-		private final Properties content;
-		Class<?> hooked_class;// TODO replace with a real callback API
-		
-		public ClassEntry() {
-			content = new Properties();
+	void addNewInstanceToConfigure(Configurable instance_to_configure) {
+		String configuration_name = instance_to_configure.configurationName();
+		if (configuration_name == null) {
+			configuration_name = instance_to_configure.getClass().getSimpleName();
+		} else if (configuration_name.trim().isEmpty()) {
+			log.warn("Invalid configurationName for class " + instance_to_configure.getClass().getName());
+			configuration_name = instance_to_configure.getClass().getSimpleName();
 		}
 		
-		void putAll(Map<String, Object> entries) {
-			content.putAll(entries);
+		configuration_name = configuration_name.trim().toLowerCase();
+		
+		// TODO get conf tree for name
+		// TODO behavior if it can't found conf...
+		
+		synchronized (configured_instances) {
+			if (configured_instances.containsKey(configuration_name)) {
+				throw new RuntimeException("Can't add a previously added configured instance: " + configuration_name);
+			}
+			configured_instances.put(configuration_name, new ClassEntry(instance_to_configure));// TODO inject tree conf in entry
+		}
+	}
+	
+	class ClassEntry {
+		private final Configurable configured_instance;
+		// Class<?> hooked_class;// TODO replace with a real callback API
+		
+		ClassEntry(Configurable instance_to_configure) {
+			// TODO snif class
+			
+			// XXX call transformators (and create API)
+			
+			// XXX check ConfigurableVariable presence
+			// XXX ConfigurableVariable: warn if this var is a generic...
+			
+			// XXX get ConfigurableGeneric class
+			// XXX ConfigurableGeneric: warn if this var is NOT a generic...
+			
+			// XXX call validators: behavior if not validate ?
+			
+			instance_to_configure.onAfterInjectConfiguration();
+			configured_instance = instance_to_configure;
+		}
+		
+		void update() {
+			if (configured_instance.enableConfigurationUpdate() == false) {
+				return;
+			}
+			configured_instance.onBeforeUpdateConfiguration();
+			// XXX do update
+			configured_instance.onAfterUpdateConfiguration();
 		}
 		
 	}

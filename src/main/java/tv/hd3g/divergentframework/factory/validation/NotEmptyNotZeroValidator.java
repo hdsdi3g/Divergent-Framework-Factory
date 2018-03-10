@@ -18,16 +18,26 @@ package tv.hd3g.divergentframework.factory.validation;
 
 import java.util.function.Predicate;
 
-public class FloatDoubleValidator extends NotNullNotEmptyValidator {
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
+public class NotEmptyNotZeroValidator extends NotNullValidator {
 	
-	public Predicate<String> getValidator() {
+	public Predicate<JsonElement> getValidator() {
 		return super.getValidator().and(t -> {
-			try {
-				Double.parseDouble(t);
-				return true;
-			} catch (NumberFormatException e) {
-				return false;
+			if (t.isJsonPrimitive()) {
+				JsonPrimitive jp = t.getAsJsonPrimitive();
+				if (jp.isString()) {
+					return jp.getAsString().equals("") == false;
+				} else if (jp.isNumber()) {
+					return jp.getAsNumber().intValue() != 0;
+				}
+			} else if (t.isJsonArray()) {
+				return t.getAsJsonArray().size() > 0;
+			} else if (t.isJsonObject()) {
+				return t.getAsJsonObject().size() > 0;
 			}
+			return false;
 		});
 	}
 }

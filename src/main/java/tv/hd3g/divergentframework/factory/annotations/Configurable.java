@@ -16,21 +16,37 @@
 */
 package tv.hd3g.divergentframework.factory.annotations;
 
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 /**
  * Only Configurable class will be setup with an external Configuration
  */
-@Retention(RUNTIME)
-@Target(TYPE)
-public @interface Configurable {
+@SingleInstance
+public interface Configurable {
 	
-	boolean updatable();
+	/**
+	 * @return a name for overload the class name
+	 */
+	public default String configurationName() {
+		return null;
+	}
 	
-	String name() default "";
+	public boolean enableConfigurationUpdate();
+	
+	/**
+	 * Only triggered one time by Configurable Object
+	 */
+	public default void onAfterInjectConfiguration() {
+	}
+	
+	/**
+	 * Only triggered after the first Configuration set in a Configurable Object
+	 */
+	public default void onAfterUpdateConfiguration() {
+	}
+	
+	/**
+	 * Only triggered after the first Configuration set in a Configurable Object
+	 */
+	public default void onBeforeUpdateConfiguration() {
+	}
 	
 }

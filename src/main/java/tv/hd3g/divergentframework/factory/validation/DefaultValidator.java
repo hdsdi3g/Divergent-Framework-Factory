@@ -18,16 +18,15 @@ package tv.hd3g.divergentframework.factory.validation;
 
 import java.util.function.Predicate;
 
+import com.google.gson.JsonElement;
+
 public class DefaultValidator {
 	
-	public DefaultValidator() {
-	}
-	
 	/**
-	 * Get a validation predicate, with the raw String source from Configuration
+	 * Get a validation predicate, with the raw source from Configuration
 	 * @return always true by default
 	 */
-	public Predicate<String> getValidator() {
+	public Predicate<JsonElement> getValidator() {
 		return (o) -> {
 			return true;
 		};

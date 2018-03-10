@@ -24,8 +24,7 @@ import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
 @Target(FIELD)
-public @interface ConfigurableVar {
+public @interface ConfigurableVariable {
 	
-	String name() default "";
-	
+	// XXX warn if this var is a generic...
 }

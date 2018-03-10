@@ -16,25 +16,56 @@
 */
 package tv.hd3g.divergentframework.factory.demo;
 
-import tv.hd3g.divergentframework.factory.annotations.Configurable;
-import tv.hd3g.divergentframework.factory.annotations.ConfigurableValidator;
-import tv.hd3g.divergentframework.factory.annotations.ConfigurableVar;
-import tv.hd3g.divergentframework.factory.validation.NotNullNotEmptyValidator;
+import java.awt.Point;
+import java.util.ArrayList;
+import java.util.Map;
 
-@Configurable(updatable = false)
-public class SingleCar {
+import tv.hd3g.divergentframework.factory.annotations.Configurable;
+import tv.hd3g.divergentframework.factory.annotations.ConfigurableGeneric;
+import tv.hd3g.divergentframework.factory.annotations.ConfigurableValidator;
+import tv.hd3g.divergentframework.factory.annotations.ConfigurableVariable;
+import tv.hd3g.divergentframework.factory.validation.NotEmptyNotZeroValidator;
+
+public class SingleCar implements Configurable {
 	
-	@ConfigurableVar
-	@ConfigurableValidator(NotNullNotEmptyValidator.class)
+	@ConfigurableVariable
+	@ConfigurableValidator(NotEmptyNotZeroValidator.class)
 	private String color;
+	
+	@ConfigurableVariable
+	@ConfigurableValidator(NotEmptyNotZeroValidator.class)
+	private float size;
+	
+	@ConfigurableGeneric(String.class)
+	@ConfigurableValidator(NotEmptyNotZeroValidator.class)
+	private ArrayList<String> passager_names;
+	
+	@ConfigurableGeneric(Wheel.class)
+	private ArrayList<Wheel> possible_wheel_type;
+	
+	@ConfigurableGeneric(Point.class)
+	private Map<String, Point> points_by_names;
 	
 	private boolean valid_constructor = false;
 	
 	private String dont_configure_me;
 	
+	public enum WheelType {
+		tractor, formula1, suv, sedan, truck;
+	}
+	
+	public static class Wheel {
+		int size;
+		WheelType type;
+	}
+	
 	public SingleCar() {
 		valid_constructor = true;
 	}
+	
+	/*
+	 * Test zone 
+	 */
 	
 	public SingleCar(Void nothing) {
 		throw new RuntimeException("Not this constructor");
@@ -50,5 +81,21 @@ public class SingleCar {
 	
 	public boolean isValid_constructor() {
 		return valid_constructor;
+	}
+	
+	public boolean enableConfigurationUpdate() {
+		return false;
+	}
+	
+	public ArrayList<Wheel> getPossible_wheel_type() {
+		return possible_wheel_type;
+	}
+	
+	public ArrayList<String> getPassager_names() {
+		return passager_names;
+	}
+	
+	public Map<String, Point> getPoints_by_names() {
+		return points_by_names;
 	}
 }

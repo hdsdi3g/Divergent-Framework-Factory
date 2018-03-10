@@ -14,19 +14,20 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.annotations;
+package tv.hd3g.divergentframework.factory.validation;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import java.util.function.Predicate;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import com.google.gson.JsonElement;
 
-/**
- * Only triggered after the first Configuration set in a Configurable Object
- */
-@Retention(RUNTIME)
-@Target(METHOD)
-public @interface OnAfterUpdateConfiguration {
+public class NotNullValidator extends DefaultValidator {
 	
+	public Predicate<JsonElement> getValidator() {
+		return t -> {
+			if (t == null) {
+				return false;
+			}
+			return t.isJsonNull() == false;
+		};
+	}
 }
