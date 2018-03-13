@@ -16,19 +16,17 @@
 */
 package tv.hd3g.divergentframework.factory.annotations;
 
-import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+/**
+ * Only triggered after the first Configuration set, after next configuration updates
+ */
 @Retention(RUNTIME)
-@Target(FIELD)
-public @interface ConfigurableGeneric {
-	
-	/**
-	 * @return the type to cast with
-	 */
-	Class<?> value();
+@Target(METHOD)
+public @interface OnAfterUpdateConfiguration {
 	
 }

@@ -25,8 +25,6 @@ public class TestSingleCar extends TestCase {
 		SingleCar sc = new SingleCar();
 		
 		assertNull(sc.getColor());
-		assertNull(sc.getDont_configure_me());
-		assertTrue(sc.isValid_constructor());
 	}
 	
 	public void testSimpleFactory() throws ReflectiveOperationException {
@@ -34,8 +32,6 @@ public class TestSingleCar extends TestCase {
 		SingleCar sc = f.create(SingleCar.class);
 		
 		assertNull(sc.getColor());
-		assertNull(sc.getDont_configure_me());
-		assertTrue(sc.isValid_constructor());
 		assertNull(sc.getPossible_wheel_type());
 		assertNull(sc.getPassager_names());
 		assertNull(sc.getPoints_by_names());
@@ -47,11 +43,11 @@ public class TestSingleCar extends TestCase {
 		SingleCar sc = f.create(SingleCar.class);
 		
 		assertNull(sc.getColor());
-		assertNull(sc.getDont_configure_me());
-		assertTrue(sc.isValid_constructor());
 		assertNull(sc.getPossible_wheel_type());
 		assertNull(sc.getPassager_names());
 		assertNull(sc.getPoints_by_names());
 	}
+	
+	// TODO test callbacks (first, before next, after next)
 	
 }

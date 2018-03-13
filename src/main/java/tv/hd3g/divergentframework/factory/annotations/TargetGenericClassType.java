@@ -24,7 +24,11 @@ import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
 @Target(FIELD)
-public @interface ConfigurableVariable {
+public @interface TargetGenericClassType {
 	
-	// XXX warn if this var is a generic...
+	/**
+	 * @return the type to cast with
+	 */
+	Class<?> value();
+	
 }

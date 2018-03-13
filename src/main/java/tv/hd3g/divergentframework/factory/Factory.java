@@ -42,7 +42,6 @@ import com.google.common.reflect.ClassPath.ClassInfo;
 import com.google.gson.JsonPrimitive;
 
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
-import tv.hd3g.divergentframework.factory.annotations.Configurable;
 
 /**
  * Create Objects and search Class
@@ -154,9 +153,8 @@ public class Factory {
 		@SuppressWarnings("unchecked")
 		T result = (T) constructor.newInstance();
 		
-		if (result instanceof Configurable) {
-			// TODO push result to ConfigurationUtility
-			// TODO behavior if the conf is missing... return null ?
+		if (false) {
+			// TODO check if this *class* is configured >> ConfigurationUtility
 		}
 		
 		// TODO add to SingleInstance if needed

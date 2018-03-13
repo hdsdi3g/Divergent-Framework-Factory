@@ -16,75 +16,81 @@
 */
 package tv.hd3g.divergentframework.factory;
 
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 import org.apache.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
-import tv.hd3g.divergentframework.factory.annotations.Configurable;
+import com.google.gson.JsonObject;
 
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
 	// XXX inject conf files + vars + env
 	
-	private final LinkedHashMap<String, ClassEntry> configured_instances;
+	private final HashMap<Class<?>, ClassEntry<?>> configured_types;
 	
 	public ConfigurationUtility() {// TODO set a Factory here
-		configured_instances = new LinkedHashMap<>();
-		Yaml y = new Yaml();
+		configured_types = new HashMap<>();
+		Yaml y = new Yaml();// XXX import conf datas
 	}
 	
-	void addNewInstanceToConfigure(Configurable instance_to_configure) {
-		String configuration_name = instance_to_configure.configurationName();
-		if (configuration_name == null) {
-			configuration_name = instance_to_configure.getClass().getSimpleName();
-		} else if (configuration_name.trim().isEmpty()) {
-			log.warn("Invalid configurationName for class " + instance_to_configure.getClass().getName());
-			configuration_name = instance_to_configure.getClass().getSimpleName();
-		}
-		
-		configuration_name = configuration_name.trim().toLowerCase();
-		
-		// TODO get conf tree for name
-		// TODO behavior if it can't found conf...
-		
-		synchronized (configured_instances) {
-			if (configured_instances.containsKey(configuration_name)) {
-				throw new RuntimeException("Can't add a previously added configured instance: " + configuration_name);
+	boolean isClassIsConfigured() {
+		return false;// XXX search in conf
+	}
+	
+	<T> void addNewInstanceToConfigure(T instance_to_configure, Class<T> target_class) {
+		synchronized (configured_types) {
+			if (configured_types.containsKey(target_class) == false) {
+				configured_types.put(target_class, new ClassEntry<T>(target_class)/** put conf */
+				);
 			}
-			configured_instances.put(configuration_name, new ClassEntry(instance_to_configure));// TODO inject tree conf in entry
 		}
+		
+		@SuppressWarnings("unchecked")
+		ClassEntry<T> c_e = (ClassEntry<T>) configured_types.get(target_class);
+		c_e.setupInstance(instance_to_configure);
 	}
 	
-	class ClassEntry {
-		private final Configurable configured_instance;
-		// Class<?> hooked_class;// TODO replace with a real callback API
+	class ClassEntry<T> {
 		
-		ClassEntry(Configurable instance_to_configure) {
+		private final Class<T> target_class;
+		private volatile JsonObject actual_class_configuration;
+		
+		private ArrayList<T> created_instances;
+		
+		ClassEntry(Class<T> target_class) {// XXX Set just class
+			this.target_class = target_class;
+			created_instances = new ArrayList<>(1);
 			// TODO snif class
-			
+		}
+		
+		private void setupInstance(T instance) {
+			/*if (target_class.isAssignableFrom(instance.getClass()) == false) {
+				throw new ClassCastException(instance.getClass().getName() + " is not assignable from " + target_class.getName());
+			}*/
 			// XXX call transformators (and create API)
 			
-			// XXX check ConfigurableVariable presence
-			// XXX ConfigurableVariable: warn if this var is a generic...
+			// XXX check annotations for sub var class
 			
-			// XXX get ConfigurableGeneric class
-			// XXX ConfigurableGeneric: warn if this var is NOT a generic...
+			// XXX get TargetGenericClassType class, warn if this var is not a generic...
 			
 			// XXX call validators: behavior if not validate ?
 			
-			instance_to_configure.onAfterInjectConfiguration();
-			configured_instance = instance_to_configure;
+			// XXX instance_to_configure.onAfterInjectConfiguration();
+			
+			created_instances.add(instance);
 		}
 		
-		void update() {
-			if (configured_instance.enableConfigurationUpdate() == false) {
-				return;
-			}
-			configured_instance.onBeforeUpdateConfiguration();
-			// XXX do update
-			configured_instance.onAfterUpdateConfiguration();
+		void updateInstances(JsonObject new_class_configuration) {
+			this.actual_class_configuration = new_class_configuration;// XXX compute deltas ?
+			
+			created_instances.forEach(instance -> {
+				// XXX configured_instance.onBeforeUpdateConfiguration();
+				// XXX do update
+				// XXX configured_instance.onAfterUpdateConfiguration();
+			});
 		}
 		
 	}

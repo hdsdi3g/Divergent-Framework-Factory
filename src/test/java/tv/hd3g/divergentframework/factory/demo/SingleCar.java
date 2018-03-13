@@ -20,35 +20,27 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Map;
 
-import tv.hd3g.divergentframework.factory.annotations.Configurable;
-import tv.hd3g.divergentframework.factory.annotations.ConfigurableGeneric;
 import tv.hd3g.divergentframework.factory.annotations.ConfigurableValidator;
-import tv.hd3g.divergentframework.factory.annotations.ConfigurableVariable;
+import tv.hd3g.divergentframework.factory.annotations.TargetGenericClassType;
 import tv.hd3g.divergentframework.factory.validation.NotEmptyNotZeroValidator;
 
-public class SingleCar implements Configurable {
+public class SingleCar {
 	
-	@ConfigurableVariable
 	@ConfigurableValidator(NotEmptyNotZeroValidator.class)
 	private String color;
 	
-	@ConfigurableVariable
 	@ConfigurableValidator(NotEmptyNotZeroValidator.class)
 	private float size;
 	
-	@ConfigurableGeneric(String.class)
+	@TargetGenericClassType(String.class)
 	@ConfigurableValidator(NotEmptyNotZeroValidator.class)
 	private ArrayList<String> passager_names;
 	
-	@ConfigurableGeneric(Wheel.class)
+	@TargetGenericClassType(Wheel.class)
 	private ArrayList<Wheel> possible_wheel_type;
 	
-	@ConfigurableGeneric(Point.class)
+	@TargetGenericClassType(Point.class)
 	private Map<String, Point> points_by_names;
-	
-	private boolean valid_constructor = false;
-	
-	private String dont_configure_me;
 	
 	public enum WheelType {
 		tractor, formula1, suv, sedan, truck;
@@ -60,7 +52,6 @@ public class SingleCar implements Configurable {
 	}
 	
 	public SingleCar() {
-		valid_constructor = true;
 	}
 	
 	/*
@@ -73,18 +64,6 @@ public class SingleCar implements Configurable {
 	
 	public String getColor() {
 		return color;
-	}
-	
-	public String getDont_configure_me() {
-		return dont_configure_me;
-	}
-	
-	public boolean isValid_constructor() {
-		return valid_constructor;
-	}
-	
-	public boolean enableConfigurationUpdate() {
-		return false;
 	}
 	
 	public ArrayList<Wheel> getPossible_wheel_type() {
