@@ -83,13 +83,15 @@ public class ConfigurationUtility {
 			created_instances.add(instance);
 		}
 		
-		void updateInstances(JsonObject new_class_configuration) {
+		void updateInstances(JsonObject new_class_configuration) {// XXX update all instances configured_types in 3 loops (Before/Update/After) ?
 			this.actual_class_configuration = new_class_configuration;// XXX compute deltas ?
 			
 			created_instances.forEach(instance -> {
 				// XXX configured_instance.onBeforeUpdateConfiguration();
 				// XXX do update
 				// XXX configured_instance.onAfterUpdateConfiguration();
+				
+				// XXX call OnBeforeRemovedInConfiguration
 			});
 		}
 		
