@@ -20,15 +20,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 
 import com.google.gson.JsonObject;
@@ -38,19 +36,87 @@ public class ConfigurationUtility {
 	
 	// XXX inject conf files + vars + env
 	
-	private static final String[] CONFIG_FILE_EXT = { ".yml", ".yaml", ".json", ".ini", ".properties" };
+	public enum ConfigurationFileType {
+		YAML {
+			public List<String> getExtentions() {
+				return Arrays.asList(".yml", ".yaml");
+			}
+			
+			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
+				// TODO Auto-generated method stub
+				// Yaml y = new Yaml(); XXX check tabs in Yaml files before opening
+				
+				return null;
+			}
+			
+		},
+		JSON {
+			public List<String> getExtentions() {
+				return Arrays.asList(".json");
+			}
+			
+			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
+				// TODO Auto-generated method stub
+				return null;
+			}
+			
+		},
+		INI {
+			public List<String> getExtentions() {
+				return Arrays.asList(".ini", ".conf");
+			}
+			
+			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
+				// TODO Auto-generated method stub
+				return null;
+			}
+			
+		},
+		PROPERTY {
+			public List<String> getExtentions() {
+				return Arrays.asList(".properties", ".property");
+			}
+			
+			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
+				// TODO Auto-generated method stub
+				return null;
+			}
+			
+		};
+		
+		public abstract List<String> getExtentions();
+		
+		/**
+		 * @return class name -> conf tree
+		 */
+		public abstract HashMap<String, JsonObject> getContent(File config_file) throws IOException;
+		
+		public static ConfigurationFileType getTypeByFilename(File conf_file) {
+			String ext = "." + FilenameUtils.getExtension(conf_file.getPath()).toLowerCase();
+			
+			return Arrays.asList(ConfigurationFileType.values()).stream().filter(type -> {
+				return type.getExtentions().contains(ext);
+			}).findFirst().orElse(null);
+		}
+	}
 	
-	private final ArrayList<File> all_configuration_files_and_dir;
-	private final LinkedHashMap<File, Long> all_watched_configuration_files_last_dates;
-	private final ConcurrentHashMap<File, List<Class<?>>> configured_classes_by_config_file;
+	public static final String[] CONFIG_FILE_EXT;
+	
+	static {
+		List<String> all_extensions = Arrays.asList(ConfigurationFileType.values()).stream().flatMap(f_type -> {
+			return f_type.getExtentions().stream();
+		}).collect(Collectors.toList());
+		CONFIG_FILE_EXT = all_extensions.toArray(new String[0]);
+	}
 	
 	private final HashMap<Class<?>, ClassEntry<?>> configured_types;
+	private final ArrayList<ConfigurationFile> configuration_files;
+	private final ArrayList<File> watched_configuration_files_and_dirs;
 	
 	public ConfigurationUtility() {// TODO set a Factory here
 		configured_types = new HashMap<>();
-		all_configuration_files_and_dir = new ArrayList<>();
-		all_watched_configuration_files_last_dates = new LinkedHashMap<>();
-		configured_classes_by_config_file = new ConcurrentHashMap<>();
+		configuration_files = new ArrayList<>();
+		watched_configuration_files_and_dirs = new ArrayList<>();
 	}
 	
 	/**
@@ -58,97 +124,140 @@ public class ConfigurationUtility {
 	 * @return this
 	 */
 	public ConfigurationUtility addConfigurationFiles(File... conf_file_or_dir) {
-		synchronized (all_configuration_files_and_dir) {
-			all_configuration_files_and_dir.addAll(Arrays.asList(conf_file_or_dir));
-			importAndRefreshConfigurationFromFiles();
+		if (conf_file_or_dir == null) {
+			return this;
+		}
+		log.info("Add configuration files: " + conf_file_or_dir);
+		
+		synchronized (watched_configuration_files_and_dirs) {
+			Arrays.asList(conf_file_or_dir).stream().forEach(file -> {
+				if (file == null) {
+					return;
+				}
+				try {
+					File cn_file = file.getCanonicalFile();
+					if (watched_configuration_files_and_dirs.contains(cn_file) == false) {
+						log.trace("Add to internal watched_configuration_files_and_dirs list " + cn_file);
+						watched_configuration_files_and_dirs.add(cn_file);
+					}
+				} catch (IOException e) {
+					throw new RuntimeException("Can't get file " + file, e);
+				}
+			});
 		}
 		
 		return this;
 	}
 	
-	private void importAndRefreshConfigurationFromFiles() {
-		List<File> all_current_files = all_configuration_files_and_dir.stream().flatMap(source -> {
-			if (source.isFile()) {
-				return Stream.of(source);
-			} else if (source.isDirectory()) {
-				return FileUtils.listFiles(source, CONFIG_FILE_EXT, true).stream();
-			} else {
-				return null;
-			}
-		}).filter(file -> {
-			return file != null;
-		}).filter(file -> {
-			return file.isHidden() == false;
-		}).filter(file -> {
-			return file.canRead();
-		}).filter(file -> {
-			return file.length() > 0;
-		}).map(file -> {
-			try {
-				return file.getCanonicalFile();
-			} catch (IOException e) {
-				log.error("Can't get file " + file, e);
-				return null;
-			}
-		}).filter(file -> {
-			return file != null;
-		}).distinct().collect(Collectors.toList());
-		
-		synchronized (all_watched_configuration_files_last_dates) {
-			List<File> new_and_updated_files = all_current_files.stream().map(file -> {
-				Long last_presence = all_watched_configuration_files_last_dates.put(file, file.lastModified());
-				if (last_presence == null) {
-					/**
-					 * New file to parse
-					 */
-					return file;
-				} else if (last_presence != file.lastModified()) {
-					/**
-					 * Updated file
-					 */
-					return file;
+	/**
+	 * With watched_configuration_files_and_dirs, update content and internal content of configuration_files.
+	 * @return this
+	 */
+	public ConfigurationUtility scanAndImportFiles() {
+		synchronized (watched_configuration_files_and_dirs) {
+			List<File> last_current_founded_files = watched_configuration_files_and_dirs.stream().flatMap(file -> {
+				if (file.isFile()) {
+					return Stream.of(file);
+				} else if (file.isDirectory()) {
+					return FileUtils.listFiles(file, CONFIG_FILE_EXT, true).stream();
 				} else {
 					return null;
 				}
 			}).filter(file -> {
 				return file != null;
-			}).collect(Collectors.toList());
-			
-			List<File> removed_files = all_watched_configuration_files_last_dates.keySet().stream().filter(file -> {
-				return all_current_files.contains(file) == false;
-			}).collect(Collectors.toList());
-			
-			removed_files.forEach(file -> {
-				all_watched_configuration_files_last_dates.remove(file);
-				
-				configured_classes_by_config_file.getOrDefault(file, Collections.emptyList()).forEach(configured_class -> {
-					// XXX remove this class from config
+			}).filter(file -> {
+				return file.isHidden() == false;
+			}).filter(file -> {
+				return file.canRead();
+			}).filter(file -> {
+				return file.length() > 0;
+			}).filter(file -> {
+				/**
+				 * Keep only known extentions.
+				 */
+				return Arrays.asList(CONFIG_FILE_EXT).stream().map(ext -> ext.substring(1)).anyMatch(ext -> {
+					return ext.equalsIgnoreCase(FilenameUtils.getExtension(file.getPath()));
 				});
-				configured_classes_by_config_file.remove(file);
-			});
+			}).map(file -> {
+				try {
+					return file.getCanonicalFile();
+				} catch (IOException e) {
+					log.error("Can't get file " + file, e);
+					return null;
+				}
+			}).filter(file -> {
+				return file != null;
+			}).distinct().peek(file -> {
+				log.trace("Found config file: " + file);
+			}).collect(Collectors.toList());
 			
-			new_and_updated_files.forEach(file -> {
-				// XXX parse and get new_and_updated_files
+			synchronized (configuration_files) {
+				List<ConfigurationFile> added_configuration_files = last_current_founded_files.stream().filter(file -> {
+					return configuration_files.stream().anyMatch(c_file -> {
+						return c_file.linked_file.equals(file) == false;
+					});
+				}).map(file -> {
+					try {
+						return new ConfigurationFile(file).parseFile();
+					} catch (IOException e) {
+						log.error("Can't parse config file " + file, e);
+						return null;
+					}
+				}).filter(file -> {
+					return file != null;
+				}).peek(c_file -> {
+					log.info("Found a new config file: " + c_file);
+				}).collect(Collectors.toList());
 				
-				// XXX push class to file list
-				List<Class<?>> current_classes_configured_in_file = configured_classes_by_config_file.computeIfAbsent(file, f -> new ArrayList<>(1));
-				/*if (current_classes_configured_in_file.contains(null) ==false) {
-					current_classes_configured_in_file.add(null);
-				}*/
-			});
-			
+				configuration_files.addAll(added_configuration_files);
+				
+				configuration_files.removeIf(c_file -> {
+					boolean must_remove = last_current_founded_files.stream().noneMatch(file -> {
+						return c_file.linked_file.equals(file);
+					});
+					if (must_remove) {
+						log.info("Can't found a config file, remove it from watching: " + c_file);
+					}
+					return must_remove;
+				});
+				
+				configuration_files.stream().filter(c_file -> {
+					return last_current_founded_files.stream().anyMatch(file -> {
+						return c_file.linked_file.equals(file);
+					});
+				}).filter(c_file -> {
+					return c_file.isUpdated();
+				}).map(c_file -> {
+					try {
+						return c_file.parseFile();
+					} catch (IOException e) {
+						log.error("Can't parse config file " + c_file.linked_file, e);
+						return null;
+					}
+				}).filter(file -> {
+					return file != null;
+				}).forEach(c_file -> {
+					log.info("Found an updated config file: " + c_file);
+				});
+				
+			}
 		}
 		
-		// Yaml y = new Yaml();// XXX import conf datas + ".json", ".ini", ".properties"
-		// XXX check tabs in Yaml files before opening
+		return this;
 	}
 	
-	private class ConfFile {
+	public ConfigurationUtility injectConfiguration() {
+		// TODO mergue all configuration_files to configured_types with multiple detection, added, updated and removed classes.
+		
+		return this;
+	}
+	
+	class ConfigurationFile {
 		final File linked_file;
 		long last_update_date;
 		final HashMap<Class<?>, JsonObject> config_tree_by_class;
 		
-		ConfFile(File linked_file) {
+		private ConfigurationFile(File linked_file) {
 			this.linked_file = linked_file;
 			last_update_date = linked_file.lastModified();
 			config_tree_by_class = new HashMap<>();
@@ -158,28 +267,36 @@ public class ConfigurationUtility {
 			return last_update_date != linked_file.lastModified();
 		}
 		
-		HashMap<Class<?>, JsonObject> parseFile() {
-			// XXX open file
+		/**
+		 * Don't update/sync main class config list, only reverberate real files content to Json trees.
+		 * @return this
+		 */
+		ConfigurationFile parseFile() throws IOException {
+			last_update_date = linked_file.lastModified();
+			
+			HashMap<String, JsonObject> raw_file_content = ConfigurationFileType.getTypeByFilename(linked_file).getContent(linked_file);
+			
 			// XXX get classes config
+			// XXX found duplicate class in this config
 			
-			// XXX get changes
-			HashMap<Class<?>, JsonObject> new_config_tree_by_class = new HashMap<>();
-			
-			return new_config_tree_by_class;
+			return this;
 		}
 		
+		public String toString() {
+			return linked_file.getPath() + ", updated " + Logtoolkit.dateLog(last_update_date) + " (" + config_tree_by_class.size() + " classes)";
+		}
 	}
 	
-	boolean isClassIsConfigured() {
-		return false;// XXX search in conf
+	boolean isClassIsConfigured(Class<?> reference_class) {
+		return configured_types.containsKey(reference_class);
 	}
 	
+	/**
+	 * @param target_class do nothing if it's not configured.
+	 */
 	<T> void addNewInstanceToConfigure(T instance_to_configure, Class<T> target_class) {
-		synchronized (configured_types) {
-			if (configured_types.containsKey(target_class) == false) {
-				configured_types.put(target_class, new ClassEntry<>(target_class)/** put conf */
-				);
-			}
+		if (isClassIsConfigured(target_class) == false) {
+			return;
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -194,10 +311,17 @@ public class ConfigurationUtility {
 		
 		private ArrayList<T> created_instances;
 		
-		ClassEntry(Class<T> target_class) {// XXX Set just class
+		private ClassEntry(Class<T> target_class) {
 			this.target_class = target_class;
 			created_instances = new ArrayList<>(1);
-			// TODO snif class
+			
+			actual_class_configuration = configuration_files.stream().filter(c_file -> {
+				return c_file.config_tree_by_class.containsKey(target_class);
+			}).findFirst().orElseThrow(() -> {
+				return new NullPointerException("Can't found configuration file for class " + target_class);
+			}).config_tree_by_class.get(target_class);
+			
+			// TODO snif class and checks some non-sense with actual_class_configuration json
 		}
 		
 		private void setupInstance(T instance) {
