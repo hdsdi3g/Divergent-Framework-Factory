@@ -36,79 +36,6 @@ public class ConfigurationUtility {
 	
 	// XXX inject conf files + vars + env
 	
-	public enum ConfigurationFileType {
-		YAML {
-			public List<String> getExtentions() {
-				return Arrays.asList(".yml", ".yaml");
-			}
-			
-			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
-				// TODO Auto-generated method stub
-				// Yaml y = new Yaml(); XXX check tabs in Yaml files before opening
-				
-				return null;
-			}
-			
-		},
-		JSON {
-			public List<String> getExtentions() {
-				return Arrays.asList(".json");
-			}
-			
-			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
-			}
-			
-		},
-		INI {
-			public List<String> getExtentions() {
-				return Arrays.asList(".ini", ".conf");
-			}
-			
-			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
-			}
-			
-		},
-		PROPERTY {
-			public List<String> getExtentions() {
-				return Arrays.asList(".properties", ".property");
-			}
-			
-			public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
-			}
-			
-		};
-		
-		public abstract List<String> getExtentions();
-		
-		/**
-		 * @return class name -> conf tree
-		 */
-		public abstract HashMap<String, JsonObject> getContent(File config_file) throws IOException;
-		
-		public static ConfigurationFileType getTypeByFilename(File conf_file) {
-			String ext = "." + FilenameUtils.getExtension(conf_file.getPath()).toLowerCase();
-			
-			return Arrays.asList(ConfigurationFileType.values()).stream().filter(type -> {
-				return type.getExtentions().contains(ext);
-			}).findFirst().orElse(null);
-		}
-	}
-	
-	public static final String[] CONFIG_FILE_EXT;
-	
-	static {
-		List<String> all_extensions = Arrays.asList(ConfigurationFileType.values()).stream().flatMap(f_type -> {
-			return f_type.getExtentions().stream();
-		}).collect(Collectors.toList());
-		CONFIG_FILE_EXT = all_extensions.toArray(new String[0]);
-	}
-	
 	private final HashMap<Class<?>, ClassEntry<?>> configured_types;
 	private final ArrayList<ConfigurationFile> configuration_files;
 	private final ArrayList<File> watched_configuration_files_and_dirs;
@@ -159,7 +86,7 @@ public class ConfigurationUtility {
 				if (file.isFile()) {
 					return Stream.of(file);
 				} else if (file.isDirectory()) {
-					return FileUtils.listFiles(file, CONFIG_FILE_EXT, true).stream();
+					return FileUtils.listFiles(file, ConfigurationFileType.CONFIG_FILE_EXTENTIONS, true).stream();
 				} else {
 					return null;
 				}
@@ -175,7 +102,7 @@ public class ConfigurationUtility {
 				/**
 				 * Keep only known extentions.
 				 */
-				return Arrays.asList(CONFIG_FILE_EXT).stream().map(ext -> ext.substring(1)).anyMatch(ext -> {
+				return Arrays.asList(ConfigurationFileType.CONFIG_FILE_EXTENTIONS).stream().map(ext -> ext.substring(1)).anyMatch(ext -> {
 					return ext.equalsIgnoreCase(FilenameUtils.getExtension(file.getPath()));
 				});
 			}).map(file -> {

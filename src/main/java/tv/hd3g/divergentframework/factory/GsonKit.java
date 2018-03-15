@@ -29,10 +29,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
@@ -431,6 +433,115 @@ public class GsonKit {
 				gson_full_pretty = null;
 			}
 			rebuildGsonSimple();
+		}
+	}
+	
+	/**
+	 * Update current with newer
+	 */
+	public static final void jsonMergue(JsonElement current, JsonElement newer) {
+		if (current == null) {
+			throw new NullPointerException("\"current\" can't to be null");
+		}
+		if (newer == null) {
+			throw new NullPointerException("\"newer\" can't to be null");
+		}
+		
+		if (current.isJsonArray()) {
+			JsonArray ja_current = current.getAsJsonArray();
+			if (newer.isJsonArray()) {
+				/**
+				 * Replace all by newer content
+				 */
+				for (int pos = ja_current.size() - 1; pos >= 0; pos--) {
+					ja_current.remove(pos);
+				}
+				ja_current.addAll(newer.getAsJsonArray());
+			} else if (newer.isJsonObject()) {
+				throw new RuntimeException("Can't inject a JsonObject in place of a JsonArray");
+			} else if (newer.isJsonPrimitive()) {
+				/**
+				 * Replace all, and add newer item
+				 */
+				for (int pos = ja_current.size() - 1; pos >= 0; pos--) {
+					ja_current.remove(pos);
+				}
+				ja_current.add(newer);
+			} else if (newer.isJsonNull()) {
+				/**
+				 * Remove all
+				 */
+				for (int pos = ja_current.size() - 1; pos >= 0; pos--) {
+					ja_current.remove(pos);
+				}
+			}
+		} else if (current.isJsonObject()) {
+			JsonObject jo_current = current.getAsJsonObject();
+			
+			if (newer.isJsonArray()) {
+				throw new RuntimeException("Can't inject a JsonArray in place of a JsonObject");
+			} else if (newer.isJsonObject()) {
+				JsonObject jo_newer = newer.getAsJsonObject();
+				List<String> current_items = jo_current.keySet().stream().collect(Collectors.toList());
+				
+				current_items.stream().filter(key -> jo_newer.has(key)).forEach(key -> {
+					JsonElement current_content_for_key = jo_current.get(key);
+					JsonElement newer_content_for_key = jo_newer.get(key);
+					
+					if (newer_content_for_key == null) {
+						/**
+						 * Current will not change.
+						 */
+					} else if (newer_content_for_key.isJsonArray()) {
+						if (current_content_for_key.isJsonArray()) {
+							jsonMergue(current_content_for_key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonObject()) {
+							jo_current.add(key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonNull()) {
+							jo_current.remove(key);
+						} else if (current_content_for_key.isJsonPrimitive()) {
+							jo_current.add(key, newer_content_for_key);
+						}
+					} else if (newer_content_for_key.isJsonObject()) {
+						if (current_content_for_key.isJsonArray()) {
+							jo_current.add(key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonObject()) {
+							jsonMergue(current_content_for_key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonNull()) {
+							jo_current.remove(key);
+						} else if (current_content_for_key.isJsonPrimitive()) {
+							jo_current.add(key, newer_content_for_key);
+						}
+					} else if (newer_content_for_key.isJsonNull()) {
+						jo_current.remove(key);
+					} else if (newer_content_for_key.isJsonPrimitive()) {
+						jo_current.add(key, newer_content_for_key);
+					}
+				});
+				
+				List<String> newer_items = jo_newer.keySet().stream().collect(Collectors.toList());
+				newer_items.stream().filter(key -> jo_current.has(key) == false).forEach(key -> {
+					jo_current.add(key, jo_newer.get(key));
+				});
+				
+			} else if (newer.isJsonPrimitive()) {
+				throw new RuntimeException("Can't inject a JsonPrimitive in place of a JsonObject");
+			} else if (newer.isJsonNull()) {
+				/**
+				 * Remove all
+				 */
+				List<String> current_items = jo_current.keySet().stream().collect(Collectors.toList());
+				
+				current_items.forEach(key -> {
+					jo_current.remove(key);
+				});
+			}
+		} else if (current.isJsonPrimitive()) {
+			throw new RuntimeException("Can't compare Json primitives");
+		} else if (current.isJsonNull()) {
+			throw new NullPointerException("Current JsonElement is null");
+		} else {
+			throw new RuntimeException("Invalid Current JsonElement type " + current.getClass().getName());
 		}
 	}
 	
