@@ -176,6 +176,8 @@ public class ConfigurationUtility {
 	public ConfigurationUtility injectConfiguration() {
 		// TODO mergue all configuration_files to configured_types with multiple detection, added, updated and removed classes.
 		
+		// TODO map for class names <-> mnemonics
+		
 		return this;
 	}
 	

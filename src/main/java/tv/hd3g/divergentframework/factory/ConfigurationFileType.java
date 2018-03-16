@@ -24,13 +24,17 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.HierarchicalINIConfiguration;
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
@@ -107,14 +111,33 @@ enum ConfigurationFileType {
 		}
 		
 		public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			try {
+				return getContent(new FileReader(config_file));
+			} catch (Exception e) {
+				throw new IOException("Invalid Json file: " + config_file);
+			}
 		}
 		
-		@Override
 		HashMap<String, JsonObject> getContent(Reader config_file_content) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			JsonElement root = GsonKit.parser.parse(config_file_content);
+			config_file_content.close();
+			
+			HashMap<String, JsonObject> result = new HashMap<>(1);
+			
+			if (root.isJsonObject() == false) {
+				throw new IOException("Invalid Json content: document must be a Json Object");
+			}
+			
+			JsonObject jo_root = root.getAsJsonObject();
+			
+			for (Map.Entry<String, JsonElement> entry : jo_root.entrySet()) {
+				if (entry.getValue().isJsonObject() == false) {
+					throw new IOException("Invalid Json content (needs a data tree) for key " + entry.getKey() + ": " + entry.getValue().toString());
+				}
+				result.put(entry.getKey(), entry.getValue().getAsJsonObject());
+			}
+			
+			return result;
 		}
 		
 	},
@@ -124,32 +147,86 @@ enum ConfigurationFileType {
 		}
 		
 		public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			try {
+				return getContent(new FileReader(config_file));
+			} catch (Exception e) {
+				throw new IOException("Invalid INI file: " + config_file);
+			}
 		}
 		
-		@Override
 		HashMap<String, JsonObject> getContent(Reader config_file_content) throws IOException {
-			// TODO Auto-generated method stub
+			HierarchicalINIConfiguration iniConfObj = new HierarchicalINIConfiguration();
+			try {
+				iniConfObj.load(config_file_content);
+			} catch (ConfigurationException e) {
+				throw new IOException(e);
+			}
+			config_file_content.close();
+			
+			Set<String> setOfSections = iniConfObj.getSections();
+			Iterator<String> sectionNames = setOfSections.iterator();
+			
+			while (sectionNames.hasNext()) {
+				String sectionName = sectionNames.next().toString();
+				
+				SubnodeConfiguration sObj = iniConfObj.getSection(sectionName);
+				Iterator<String> it1 = sObj.getKeys();
+				
+				while (it1.hasNext()) {
+					// Get element
+					Object key = it1.next();
+					System.out.print("Key " + key.toString() + " Value " + sObj.getString(key.toString()) + "\n");// XXX implements this & test it
+				}
+			}
+			
 			return null;
 		}
 		
 	},
+	
+	/**
+	 * Format: mnemonic.variable -> value
+	 * - mnemonic can be a class name or a short name.
+	 * - value can be a simple json primitive compatible (String, number, boolean) or a complex json data.
+	 */
 	PROPERTY {
 		public List<String> getExtentions() {
 			return Arrays.asList(".properties", ".property");
 		}
 		
 		public HashMap<String, JsonObject> getContent(File config_file) throws IOException {
-			// TODO Auto-generated method stub
-			Properties p = new Properties();
-			return null;
+			try {
+				return getContent(new FileReader(config_file));
+			} catch (Exception e) {
+				throw new IOException("Invalid Properties file: " + config_file);
+			}
 		}
 		
-		@Override
 		HashMap<String, JsonObject> getContent(Reader config_file_content) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			Properties p = new Properties();
+			p.load(config_file_content);
+			config_file_content.close();
+			
+			HashMap<String, JsonObject> result = new HashMap<>(p.size() + 1);
+			
+			p.forEach((k, v) -> {
+				String raw_key = (String) k;
+				
+				int dot_pos = raw_key.lastIndexOf(".");
+				if (dot_pos == -1 | dot_pos == 0 | dot_pos + 1 == raw_key.length()) {
+					throw new RuntimeException("Invalid syntax: can't found separate dot in " + raw_key);
+				}
+				
+				String result_key = raw_key.substring(0, dot_pos);
+				String variable_name = raw_key.substring(dot_pos + 1);
+				
+				if (result.containsKey(result_key) == false) {
+					result.put(result_key, new JsonObject());
+				}
+				result.get(result_key).add(variable_name, GsonKit.parser.parse((String) v));
+			});
+			
+			return result;
 		}
 		
 	};
@@ -175,8 +252,6 @@ enum ConfigurationFileType {
 	}
 	
 	static final String[] CONFIG_FILE_EXTENTIONS;
-	
-	private static Logger log = Logger.getLogger(ConfigurationFileType.class);
 	
 	static {
 		List<String> all_extensions = Arrays.asList(ConfigurationFileType.values()).stream().flatMap(f_type -> {

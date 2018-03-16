@@ -49,6 +49,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
@@ -106,12 +107,10 @@ public class GsonKit {
 			this.type = type;
 			
 			if (log.isTraceEnabled()) {
-				this.typeAdapter = new JsonSerializer<T>() {
-					public JsonElement serialize(T src, Type typeOfSrc, JsonSerializationContext context) {
-						JsonElement result = typeAdapter.serialize(src, typeOfSrc, context);
-						log.trace("Serialize to " + result.toString());
-						return result;
-					}
+				this.typeAdapter = (JsonSerializer<T>) (src, typeOfSrc, context) -> {
+					JsonElement result = typeAdapter.serialize(src, typeOfSrc, context);
+					log.trace("Serialize to " + result.toString());
+					return result;
 				};
 			} else {
 				this.typeAdapter = typeAdapter;
@@ -123,11 +122,9 @@ public class GsonKit {
 			
 			this.type = type;
 			if (log.isTraceEnabled()) {
-				this.typeAdapter = new JsonDeserializer<T>() {
-					public T deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-						log.trace("Deserialize from " + json.toString());
-						return typeAdapter.deserialize(json, typeOfT, context);
-					}
+				this.typeAdapter = (JsonDeserializer<T>) (json, typeOfT, context) -> {
+					log.trace("Deserialize from " + json.toString());
+					return typeAdapter.deserialize(json, typeOfT, context);
 				};
 			} else {
 				this.typeAdapter = typeAdapter;
@@ -140,6 +137,7 @@ public class GsonKit {
 	private ArrayList<De_Serializator> gson_simple_serializator;
 	private ArrayList<De_Serializator> gson_full_serializator;
 	private boolean full_pretty_printing = false;
+	public static final JsonParser parser = new JsonParser();
 	
 	/**
 	 * @return Gson with GsonIgnoreStrategy, SerializeNulls and BaseSerializers
@@ -361,14 +359,12 @@ public class GsonKit {
 	}
 	
 	public synchronized <T> GsonKit registerDeserializer(Type type, Class<T> dest_type, Function<JsonElement, T> deserializer) {
-		gson_full_serializator.add(new De_Serializator(type, new JsonDeserializer<T>() {
-			public T deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-				try {
-					return deserializer.apply(json);
-				} catch (Exception e) {
-					log.error("Can't deserialize to " + dest_type.getName(), e);
-					return null;
-				}
+		gson_full_serializator.add(new De_Serializator(type, (JsonDeserializer<T>) (json, typeOfT, context) -> {
+			try {
+				return deserializer.apply(json);
+			} catch (Exception e) {
+				log.error("Can't deserialize to " + dest_type.getName(), e);
+				return null;
 			}
 		}));
 		gson_full = null;
@@ -377,14 +373,12 @@ public class GsonKit {
 	}
 	
 	public synchronized <T> GsonKit registerSerializer(Type type, Class<T> source_type, Function<T, JsonElement> serializer) {
-		gson_full_serializator.add(new De_Serializator(type, new JsonSerializer<T>() {
-			public JsonElement serialize(T src, Type typeOfSrc, JsonSerializationContext context) {
-				try {
-					return serializer.apply(src);
-				} catch (Exception e) {
-					log.error("Can't serialize from " + source_type.getName(), e);
-					return null;
-				}
+		gson_full_serializator.add(new De_Serializator(type, (JsonSerializer<T>) (src, typeOfSrc, context) -> {
+			try {
+				return serializer.apply(src);
+			} catch (Exception e) {
+				log.error("Can't serialize from " + source_type.getName(), e);
+				return null;
 			}
 		}));
 		gson_full = null;
@@ -404,7 +398,7 @@ public class GsonKit {
 	}
 	
 	private <T> GsonDeSerializer<T> makeDeSerializer(Class<T> object_type, Function<T, JsonElement> adapter_serializer, Function<JsonElement, T> adapter_deserializer) {
-		return new GsonDeSerializer<T>() {
+		return new GsonDeSerializer<>() {
 			public JsonElement serialize(T src, Type typeOfSrc, JsonSerializationContext context) {
 				try {
 					return adapter_serializer.apply(src);
