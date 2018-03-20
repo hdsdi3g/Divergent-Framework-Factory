@@ -77,4 +77,8 @@ public class SingleCar {
 	public Map<String, Point> getPoints_by_names() {
 		return points_by_names;
 	}
+	
+	public float getSize() {
+		return size;
+	}
 }

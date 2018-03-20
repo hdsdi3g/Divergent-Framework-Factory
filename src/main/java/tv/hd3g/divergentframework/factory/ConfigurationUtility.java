@@ -43,7 +43,7 @@ public class ConfigurationUtility {
 	private final Factory factory;
 	private final HashMap<String, Class<?>> class_mnemonics;
 	
-	private final HashMap<Class<?>, ClassEntry<?>> configured_types;// TODO4 change to sync hash map ?
+	private final HashMap<Class<?>, ConfiguredClassEntry<?>> configured_types;// TODO4 change to sync hash map ?
 	private final ArrayList<ConfigurationFile> configuration_files;
 	private final ArrayList<File> watched_configuration_files_and_dirs;
 	
@@ -240,7 +240,7 @@ public class ConfigurationUtility {
 	
 	public ConfigurationUtility injectConfiguration() {
 		synchronized (configuration_files) {
-			LinkedHashMap<ClassEntry<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
+			LinkedHashMap<ConfiguredClassEntry<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
 			
 			synchronized (configured_types) {
 				configuration_files.stream().filter(c_file -> {
@@ -251,14 +251,14 @@ public class ConfigurationUtility {
 							JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
 							
 							if (configured_types.containsKey(set_updated_class_name)) {
-								ClassEntry<?> current_class_entry = configured_types.get(set_updated_class_name);
+								ConfiguredClassEntry<?> current_class_entry = configured_types.get(set_updated_class_name);
 								if (class_conf_to_update.containsKey(current_class_entry)) {
 									GsonKit.jsonMergue(class_conf_to_update.get(current_class_entry), new_config_for_class);
 								} else {
 									class_conf_to_update.put(current_class_entry, new_config_for_class);
 								}
 							} else {
-								configured_types.put(set_updated_class_name, new ClassEntry<>(set_updated_class_name, new_config_for_class));
+								configured_types.put(set_updated_class_name, new ConfiguredClassEntry<>(set_updated_class_name, new_config_for_class));
 							}
 						});
 					} catch (IOException e) {
@@ -286,7 +286,7 @@ public class ConfigurationUtility {
 			 */
 			if (class_conf_to_update.isEmpty() == false) {
 				List<String> all_class_names = class_conf_to_update.keySet().stream().map(c_e -> {
-					return c_e.target_class.getName();
+					return c_e.getTargetClass().getName();
 				}).collect(Collectors.toList());
 				
 				log.info("Update previously configured classes " + all_class_names);
@@ -297,9 +297,9 @@ public class ConfigurationUtility {
 				class_conf_to_update.forEach((c_e, new_class_configuration) -> {
 					if (log.isDebugEnabled()) {
 						if (log.isTraceEnabled()) {
-							log.trace("Update all configured instances for " + c_e.target_class + " with conf " + new_class_configuration);
+							log.trace("Update all configured instances for " + c_e.getTargetClass() + " with conf " + new_class_configuration);
 						} else {
-							log.debug("Update all configured instances for " + c_e.target_class);
+							log.debug("Update all configured instances for " + c_e.getTargetClass());
 						}
 					}
 					c_e.updateInstances(new_class_configuration);
@@ -393,74 +393,14 @@ public class ConfigurationUtility {
 	/**
 	 * @param target_class do nothing if it's not configured.
 	 */
-	<T> void addNewInstanceToConfigure(T instance_to_configure, Class<T> target_class) {// TODO3 rename to NewClassInstance
+	<T> void addNewClassInstanceToConfigure(T instance_to_configure, Class<T> target_class) {
 		if (isClassIsConfigured(target_class) == false) {
 			return;
 		}
 		
 		@SuppressWarnings("unchecked")
-		ClassEntry<T> c_e = (ClassEntry<T>) configured_types.get(target_class);
+		ConfiguredClassEntry<T> c_e = (ConfiguredClassEntry<T>) configured_types.get(target_class);
 		c_e.setupInstance(instance_to_configure);
-	}
-	
-	class ClassEntry<T> {
-		
-		private final Class<T> target_class;
-		private volatile JsonObject actual_class_configuration;
-		
-		private ArrayList<T> created_instances;
-		
-		private ClassEntry(Class<T> target_class, JsonObject new_class_configuration) {
-			this.target_class = target_class;
-			created_instances = new ArrayList<>(1);
-			
-			// TODO snif class and checks some non-sense with actual_class_configuration json
-			actual_class_configuration = new_class_configuration;
-		}
-		
-		private void setupInstance(T instance) {
-			/*if (target_class.isAssignableFrom(instance.getClass()) == false) {
-				throw new ClassCastException(instance.getClass().getName() + " is not assignable from " + target_class.getName());
-			}*/
-			// TODO4 call transformators (and create API)
-			
-			// TODO2 check annotations for sub var class
-			
-			// TODO2 get TargetGenericClassType class, warn if this var is not a generic...
-			
-			// TODO2 call validators: behavior if not validate ?
-			
-			// TODO2 instance_to_configure.onAfterInjectConfiguration();
-			
-			created_instances.add(instance);
-		}
-		
-		private void afterRemovedConf() {
-			// TODO3 callback all instances with OnAfterRemoveConfiguration
-		}
-		
-		private void beforeUpdateInstances() {
-			// TODO3 callback all instances
-		}
-		
-		private void afterUpdateInstances() {
-			// TODO3 callback all instances
-		}
-		
-		private void updateInstances(JsonObject new_class_configuration) {
-			// TODO3 checks some non-sense with new_class_configuration json
-			
-			actual_class_configuration = new_class_configuration;// TODO3 compute deltas ?
-			
-			created_instances.forEach(instance -> {
-				// TODO3 configured_instance.onBeforeUpdateConfiguration();
-				// TODO3 do update
-				// TODO3 configured_instance.onAfterUpdateConfiguration();
-				
-				// TODO3 call OnBeforeRemovedInConfiguration
-			});
-		}
-		
 	}
 	
 }
