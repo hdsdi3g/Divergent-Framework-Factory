@@ -130,7 +130,7 @@ public class Factory {
 	}
 	
 	public <T> T create(Class<T> from_class) throws ReflectiveOperationException {
-		// TODO get SingleInstance
+		// TODO4 get SingleInstance
 		
 		checkIsAccessibleClass(from_class, true);
 		
@@ -154,15 +154,15 @@ public class Factory {
 		T result = (T) constructor.newInstance();
 		
 		if (false) {
-			// TODO check if this *class* is configured >> ConfigurationUtility
+			// TODO3 check if this *class* is configured >> ConfigurationUtility
 		}
 		
-		// TODO add to SingleInstance if needed
+		// TODO4 add to SingleInstance if needed
 		
 		return result;
 	}
 	
-	// TODO set ConfigurationUtility
+	// TODO4 set ConfigurationUtility
 	
 	/**
 	 * @param onError can be null

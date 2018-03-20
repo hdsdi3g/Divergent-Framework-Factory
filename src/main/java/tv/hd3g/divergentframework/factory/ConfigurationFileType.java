@@ -24,7 +24,6 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -44,6 +43,14 @@ import com.google.gson.JsonObject;
 
 enum ConfigurationFileType {
 	
+	/**
+	 * Format:
+	 * mnemonic:
+	 * (spaces) variable: value
+	 * ... (you can use --- document separator for overload entries)
+	 * - mnemonic can be a class name or a short name.
+	 * - value can be a simple json primitive compatible (String, number, boolean) or a complex json data.
+	 */
 	YAML {
 		public List<String> getExtentions() {
 			return Arrays.asList(".yml", ".yaml");
@@ -105,6 +112,14 @@ enum ConfigurationFileType {
 		}
 		
 	},
+	
+	/**
+	 * Format:
+	 * {"mnemonic": {"variable": value, ...}, ...}
+	 * - mnemonic can be a class name or a short name.
+	 * - value can be a simple json primitive compatible (String, number, boolean) or a complex json data.
+	 * Only one json document in a json file.
+	 */
 	JSON {
 		public List<String> getExtentions() {
 			return Arrays.asList(".json");
@@ -141,6 +156,17 @@ enum ConfigurationFileType {
 		}
 		
 	},
+	
+	/**
+	 * Format:
+	 * [mnemonic]
+	 * variable=value
+	 * variable = value
+	 * variable: value
+	 * ...
+	 * - mnemonic can be a class name or a short name.
+	 * - value can be a simple json primitive compatible (String, number, boolean) or a complex json data.
+	 */
 	INI {
 		public List<String> getExtentions() {
 			return Arrays.asList(".ini", ".conf");
@@ -155,31 +181,30 @@ enum ConfigurationFileType {
 		}
 		
 		HashMap<String, JsonObject> getContent(Reader config_file_content) throws IOException {
-			HierarchicalINIConfiguration iniConfObj = new HierarchicalINIConfiguration();
+			HierarchicalINIConfiguration ini_content = new HierarchicalINIConfiguration();
 			try {
-				iniConfObj.load(config_file_content);
+				ini_content.load(config_file_content);
 			} catch (ConfigurationException e) {
 				throw new IOException(e);
 			}
 			config_file_content.close();
 			
-			Set<String> setOfSections = iniConfObj.getSections();
-			Iterator<String> sectionNames = setOfSections.iterator();
+			Set<String> sections = ini_content.getSections();
+			HashMap<String, JsonObject> result = new HashMap<>(sections.size() + 1);
 			
-			while (sectionNames.hasNext()) {
-				String sectionName = sectionNames.next().toString();
+			sections.stream().forEach(section_name -> {
+				SubnodeConfiguration section_content = ini_content.getSection(section_name);
 				
-				SubnodeConfiguration sObj = iniConfObj.getSection(sectionName);
-				Iterator<String> it1 = sObj.getKeys();
-				
-				while (it1.hasNext()) {
-					// Get element
-					Object key = it1.next();
-					System.out.print("Key " + key.toString() + " Value " + sObj.getString(key.toString()) + "\n");// XXX implements this & test it
+				if (result.containsKey(section_name) == false) {
+					result.put(section_name, new JsonObject());
 				}
-			}
+				
+				section_content.getKeys().forEachRemaining(key -> {
+					result.get(section_name).add(key, GsonKit.parser.parse(section_content.getString(key)));
+				});
+			});
 			
-			return null;
+			return result;
 		}
 		
 	},

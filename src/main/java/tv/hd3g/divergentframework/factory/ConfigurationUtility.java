@@ -17,11 +17,15 @@
 package tv.hd3g.divergentframework.factory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,16 +38,74 @@ import com.google.gson.JsonObject;
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// XXX inject conf files + vars + env
+	// TODO4 inject conf files + vars + env
 	
-	private final HashMap<Class<?>, ClassEntry<?>> configured_types;
+	private final Factory factory;
+	private final HashMap<String, Class<?>> class_mnemonics;
+	
+	private final HashMap<Class<?>, ClassEntry<?>> configured_types;// TODO4 change to sync hash map ?
 	private final ArrayList<ConfigurationFile> configuration_files;
 	private final ArrayList<File> watched_configuration_files_and_dirs;
 	
-	public ConfigurationUtility() {// TODO set a Factory here
+	public ConfigurationUtility(Factory factory) {
+		this.factory = factory;
+		if (factory == null) {
+			throw new NullPointerException("\"factory\" can't to be null");
+		}
+		class_mnemonics = new HashMap<>();
+		
 		configured_types = new HashMap<>();
 		configuration_files = new ArrayList<>();
 		watched_configuration_files_and_dirs = new ArrayList<>();
+	}
+	
+	/**
+	 * @return null if it can't found class
+	 */
+	private Class<?> getClassByMnemonic(String mnemonic) {
+		if (class_mnemonics.containsKey(mnemonic)) {
+			return class_mnemonics.get(mnemonic);
+		} else {
+			return factory.getClassByName(mnemonic);
+		}
+	}
+	
+	/**
+	 * @param file is properties file syntax.
+	 * @return this
+	 */
+	public ConfigurationUtility loadMnemonicClassNameListFromFile(File conf_file) throws IOException {
+		if (conf_file.exists() == false) {
+			throw new FileNotFoundException(conf_file + " don't exists");
+		} else if (conf_file.canRead() == false) {
+			throw new IOException("Can't read " + conf_file);
+		} else if (conf_file.isFile() == false) {
+			throw new FileNotFoundException(conf_file + " is not a file");
+		}
+		
+		log.debug("Load mnemonic conf file " + conf_file);
+		
+		Properties p = new Properties();
+		FileInputStream fis = new FileInputStream(conf_file);
+		p.load(fis);
+		fis.close();
+		
+		p.forEach((k, v) -> {
+			String mnemonic = (String) k;
+			String classname = (String) v;
+			Class<?> target = factory.getClassByName(classname);
+			if (target != null) {
+				class_mnemonics.put(mnemonic, target);
+			} else {
+				log.debug("Can't found class " + classname + " for mnemonic " + mnemonic);
+			}
+		});
+		
+		if (log.isTraceEnabled()) {
+			log.trace("Load mnemonic definitions" + class_mnemonics);
+		}
+		
+		return this;
 	}
 	
 	/**
@@ -124,8 +186,11 @@ public class ConfigurationUtility {
 						return c_file.linked_file.equals(file) == false;
 					});
 				}).map(file -> {
+					return new ConfigurationFile(file);
+				}).map(file -> {
 					try {
-						return new ConfigurationFile(file).parseFile();
+						file.parseFile();
+						return file;
 					} catch (IOException e) {
 						log.error("Can't parse config file " + file, e);
 						return null;
@@ -174,9 +239,76 @@ public class ConfigurationUtility {
 	}
 	
 	public ConfigurationUtility injectConfiguration() {
-		// TODO mergue all configuration_files to configured_types with multiple detection, added, updated and removed classes.
-		
-		// TODO map for class names <-> mnemonics
+		synchronized (configuration_files) {
+			LinkedHashMap<ClassEntry<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
+			
+			synchronized (configured_types) {
+				configuration_files.stream().filter(c_file -> {
+					return c_file.isUpdated();
+				}).forEach(conf -> {
+					try {
+						conf.parseFile().stream().forEach(set_updated_class_name -> {
+							JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
+							
+							if (configured_types.containsKey(set_updated_class_name)) {
+								ClassEntry<?> current_class_entry = configured_types.get(set_updated_class_name);
+								if (class_conf_to_update.containsKey(current_class_entry)) {
+									GsonKit.jsonMergue(class_conf_to_update.get(current_class_entry), new_config_for_class);
+								} else {
+									class_conf_to_update.put(current_class_entry, new_config_for_class);
+								}
+							} else {
+								configured_types.put(set_updated_class_name, new ClassEntry<>(set_updated_class_name, new_config_for_class));
+							}
+						});
+					} catch (IOException e) {
+						log.error("Can't read/parse file " + conf.linked_file, e);
+					}
+				});
+				
+				/**
+				 * Do a reverse search for removed classes
+				 */
+				List<Class<?>> all_actual_configured_classes = configuration_files.stream().flatMap(c_f -> {
+					return c_f.config_tree_by_class.keySet().stream();
+				}).collect(Collectors.toList());
+				
+				configured_types.keySet().stream().filter(current_configured_class -> {
+					return all_actual_configured_classes.contains(current_configured_class) == false;
+				}).collect(Collectors.toList()).forEach(class_not_actually_configured -> {
+					log.debug("Remove configuration tree for " + class_not_actually_configured);
+					configured_types.remove(class_not_actually_configured).afterRemovedConf();
+				});
+			}
+			
+			/**
+			 * Update all current configured classes
+			 */
+			if (class_conf_to_update.isEmpty() == false) {
+				List<String> all_class_names = class_conf_to_update.keySet().stream().map(c_e -> {
+					return c_e.target_class.getName();
+				}).collect(Collectors.toList());
+				
+				log.info("Update previously configured classes " + all_class_names);
+				
+				class_conf_to_update.keySet().forEach(c_e -> {
+					c_e.beforeUpdateInstances();
+				});
+				class_conf_to_update.forEach((c_e, new_class_configuration) -> {
+					if (log.isDebugEnabled()) {
+						if (log.isTraceEnabled()) {
+							log.trace("Update all configured instances for " + c_e.target_class + " with conf " + new_class_configuration);
+						} else {
+							log.debug("Update all configured instances for " + c_e.target_class);
+						}
+					}
+					c_e.updateInstances(new_class_configuration);
+				});
+				class_conf_to_update.keySet().forEach(c_e -> {
+					c_e.afterUpdateInstances();
+				});
+			}
+		}
 		
 		return this;
 	}
@@ -198,22 +330,60 @@ public class ConfigurationUtility {
 		
 		/**
 		 * Don't update/sync main class config list, only reverberate real files content to Json trees.
-		 * @return this
+		 * @return set/updated class conf
 		 */
-		ConfigurationFile parseFile() throws IOException {
+		List<Class<?>> parseFile() throws IOException {
 			last_update_date = linked_file.lastModified();
 			
+			log.debug("Open conf file: " + linked_file);
 			HashMap<String, JsonObject> raw_file_content = ConfigurationFileType.getTypeByFilename(linked_file).getContent(linked_file);
 			
-			// XXX get classes config
-			// XXX found duplicate class in this config
+			/**
+			 * Remove from current conf list the not present class in last configuration file content.
+			 */
+			config_tree_by_class.keySet().stream().filter(actual_configured_class -> {
+				return raw_file_content.keySet().stream().map(mnemonic -> {
+					return getClassByMnemonic(mnemonic);
+				}).noneMatch(new_configured_class -> {
+					return actual_configured_class.equals(new_configured_class);
+				});
+			}).collect(Collectors.toList()).forEach(class_to_remove -> {
+				config_tree_by_class.remove(class_to_remove);
+			});
 			
-			return this;
+			/**
+			 * Add/update new configurations for classes
+			 */
+			return raw_file_content.keySet().stream().map(mnemonic -> {
+				Class<?> target_class = getClassByMnemonic(mnemonic);
+				
+				if (target_class == null) {
+					log.warn("Configuration try to setup a not found class for name (or mnemonic) \"" + mnemonic + "\"");
+					return null;
+				}
+				
+				JsonObject class_conf_tree = raw_file_content.get(mnemonic);
+				
+				if (log.isTraceEnabled()) {
+					if (config_tree_by_class.containsKey(target_class)) {
+						log.trace("Update configuration for " + target_class + ": " + class_conf_tree.toString() + " in " + linked_file.getName());
+					} else {
+						log.trace("Found configuration for " + target_class + ": " + class_conf_tree.toString() + " in " + linked_file.getName());
+					}
+				}
+				
+				config_tree_by_class.put(target_class, class_conf_tree);
+				return target_class;
+			}).filter(file -> {
+				return file != null;
+			}).distinct().collect(Collectors.toList());
+			
 		}
 		
 		public String toString() {
 			return linked_file.getPath() + ", updated " + Logtoolkit.dateLog(last_update_date) + " (" + config_tree_by_class.size() + " classes)";
 		}
+		
 	}
 	
 	boolean isClassIsConfigured(Class<?> reference_class) {
@@ -223,7 +393,7 @@ public class ConfigurationUtility {
 	/**
 	 * @param target_class do nothing if it's not configured.
 	 */
-	<T> void addNewInstanceToConfigure(T instance_to_configure, Class<T> target_class) {
+	<T> void addNewInstanceToConfigure(T instance_to_configure, Class<T> target_class) {// TODO3 rename to NewClassInstance
 		if (isClassIsConfigured(target_class) == false) {
 			return;
 		}
@@ -240,45 +410,54 @@ public class ConfigurationUtility {
 		
 		private ArrayList<T> created_instances;
 		
-		private ClassEntry(Class<T> target_class) {
+		private ClassEntry(Class<T> target_class, JsonObject new_class_configuration) {
 			this.target_class = target_class;
 			created_instances = new ArrayList<>(1);
 			
-			actual_class_configuration = configuration_files.stream().filter(c_file -> {
-				return c_file.config_tree_by_class.containsKey(target_class);
-			}).findFirst().orElseThrow(() -> {
-				return new NullPointerException("Can't found configuration file for class " + target_class);
-			}).config_tree_by_class.get(target_class);
-			
 			// TODO snif class and checks some non-sense with actual_class_configuration json
+			actual_class_configuration = new_class_configuration;
 		}
 		
 		private void setupInstance(T instance) {
 			/*if (target_class.isAssignableFrom(instance.getClass()) == false) {
 				throw new ClassCastException(instance.getClass().getName() + " is not assignable from " + target_class.getName());
 			}*/
-			// XXX call transformators (and create API)
+			// TODO4 call transformators (and create API)
 			
-			// XXX check annotations for sub var class
+			// TODO2 check annotations for sub var class
 			
-			// XXX get TargetGenericClassType class, warn if this var is not a generic...
+			// TODO2 get TargetGenericClassType class, warn if this var is not a generic...
 			
-			// XXX call validators: behavior if not validate ?
+			// TODO2 call validators: behavior if not validate ?
 			
-			// XXX instance_to_configure.onAfterInjectConfiguration();
+			// TODO2 instance_to_configure.onAfterInjectConfiguration();
 			
 			created_instances.add(instance);
 		}
 		
-		void updateInstances(JsonObject new_class_configuration) {// XXX update all instances configured_types in 3 loops (Before/Update/After) ?
-			this.actual_class_configuration = new_class_configuration;// XXX compute deltas ?
+		private void afterRemovedConf() {
+			// TODO3 callback all instances with OnAfterRemoveConfiguration
+		}
+		
+		private void beforeUpdateInstances() {
+			// TODO3 callback all instances
+		}
+		
+		private void afterUpdateInstances() {
+			// TODO3 callback all instances
+		}
+		
+		private void updateInstances(JsonObject new_class_configuration) {
+			// TODO3 checks some non-sense with new_class_configuration json
+			
+			actual_class_configuration = new_class_configuration;// TODO3 compute deltas ?
 			
 			created_instances.forEach(instance -> {
-				// XXX configured_instance.onBeforeUpdateConfiguration();
-				// XXX do update
-				// XXX configured_instance.onAfterUpdateConfiguration();
+				// TODO3 configured_instance.onBeforeUpdateConfiguration();
+				// TODO3 do update
+				// TODO3 configured_instance.onAfterUpdateConfiguration();
 				
-				// XXX call OnBeforeRemovedInConfiguration
+				// TODO3 call OnBeforeRemovedInConfiguration
 			});
 		}
 		

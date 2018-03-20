@@ -172,4 +172,41 @@ public class ConfigurationFileTypeTest extends TestCase {
 		});
 	}
 	
+	public void testINILoading() throws IOException {
+		StringWriter strOut = new StringWriter();
+		PrintWriter pw = new PrintWriter(strOut);
+		pw.println("[mnemonic]");
+		pw.println("v1=a");
+		pw.println("v2 = 2");
+		pw.println("v3 = true");
+		pw.println("v4 = \"4\"");
+		pw.println("v5: [\"b\"]");
+		pw.println("v6={truc={\"c\":6}}");
+		
+		HashMap<String, JsonObject> datas = ConfigurationFileType.INI.getContent(new StringReader(strOut.toString()));
+		
+		assertTrue(datas.containsKey("mnemonic"));
+		
+		JsonObject root = datas.get("mnemonic");
+		
+		assertEquals(6, root.size());
+		for (int pos = 1; pos <= root.size(); pos++) {
+			assertTrue(root.has("v" + pos));
+		}
+		
+		assertEquals("a", root.get("v1").getAsString());
+		assertEquals(2, root.get("v2").getAsInt());
+		assertEquals(true, root.get("v3").getAsBoolean());
+		assertEquals("4", root.get("v4").getAsString());
+		
+		assertTrue(root.get("v5").isJsonArray());
+		assertEquals(1, root.get("v5").getAsJsonArray().size());
+		assertEquals("b", root.get("v5").getAsJsonArray().get(0).getAsString());
+		
+		assertTrue(root.get("v6").isJsonObject());
+		assertTrue(root.get("v6").getAsJsonObject().has("truc"));
+		assertTrue(root.get("v6").getAsJsonObject().get("truc").getAsJsonObject().has("c"));
+		assertEquals(6, root.get("v6").getAsJsonObject().get("truc").getAsJsonObject().get("c").getAsInt());
+	}
+	
 }
