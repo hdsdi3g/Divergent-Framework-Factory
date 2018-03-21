@@ -20,27 +20,39 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 
 import tv.hd3g.divergentframework.factory.annotations.ConfigurableValidator;
 import tv.hd3g.divergentframework.factory.annotations.TargetGenericClassType;
 import tv.hd3g.divergentframework.factory.validation.DefaultValidator;
 
-class ConfiguredClassEntry<T> {
+abstract class ConfiguredClassEntry<T> {// TODO split ConfiguredClassEntry in 2: Class<->Field with conf (related to Factory), and Global Conf<->Class<->created objects (Related to Conf utility)
+	// TODO remove Generic
+	
 	private static Logger log = Logger.getLogger(ConfiguredClassEntry.class);
 	
+	private final Gson gson;
+	
 	private final Class<T> target_class;
+	
+	@Deprecated
 	private volatile JsonObject actual_class_configuration;
 	
 	@Deprecated
-	private final ArrayList<T> created_instances;// TODO need this here ?
+	private final ArrayList<T> created_instances;
 	
 	private final HashMap<String, FieldDefinition> field_definitions;
 	
@@ -50,7 +62,7 @@ class ConfiguredClassEntry<T> {
 		Class<?> target_generic_class_type;
 		final List<Class<? extends DefaultValidator>> validators;
 		
-		public FieldDefinition(Field field) {
+		FieldDefinition(Field field) {
 			this.field = field;
 			if (field == null) {
 				throw new NullPointerException("\"field\" can't to be null");
@@ -71,38 +83,166 @@ class ConfiguredClassEntry<T> {
 			}).collect(Collectors.toList());
 		}
 		
-		/*boolean isMap() {
-			return type.isAssignableFrom(LinkedHashMap.class) && target_generic_class_type != null;
+		@SuppressWarnings("unchecked")
+		void setValue(Object main_object_instance, JsonElement value) throws JsonSyntaxException, IllegalArgumentException, IllegalAccessException {// TODO callback "after inject/update" ?
+			Object current_value = field.get(main_object_instance);
+			
+			if (target_generic_class_type != null) {
+				/**
+				 * It's a valid generic
+				 */
+				if (type.isAssignableFrom(ArrayList.class)) {
+					/**
+					 * It's a list: let's do an intelligent update.
+					 * Get current list content
+					 */
+					@SuppressWarnings("rawtypes")
+					ArrayList current_list = new ArrayList();
+					if (current_value != null) {
+						current_list.addAll((Collection<?>) current_value);
+					}
+					
+					if (value.isJsonArray()) {
+						JsonArray ja_value = value.getAsJsonArray();
+						
+						for (int pos = 0; pos < ja_value.size(); pos++) {
+							if (ja_value.get(pos).isJsonNull()) {
+								continue;
+							}
+							Object newer_object = createNewSubItem(ja_value.get(pos));
+							
+							if (current_list.size() > pos) {
+								if (current_list.get(pos).equals(newer_object) == false) {
+									callbackUpdateAPIForRemovedObject(target_generic_class_type, current_list.get(pos));
+									current_list.set(pos, newer_object);
+								}
+							} else {
+								current_list.add(newer_object);
+							}
+						}
+						field.set(main_object_instance, current_list);
+					} else if (value.isJsonPrimitive()) {
+						Object new_item = createNewSubItem(value);
+						
+						current_list.removeIf(item -> {
+							if (item.equals(new_item) == false) {
+								callbackUpdateAPIForRemovedObject(target_generic_class_type, item);
+								return true;
+							}
+							return false;
+						});
+						if (current_list.isEmpty()) {
+							current_list.add(new_item);
+						}
+						
+						field.set(main_object_instance, current_list);
+					} else if (value.isJsonNull()) {
+						field.set(main_object_instance, null);
+					} else if (value.isJsonObject()) {
+						throw new JsonSyntaxException("Can't mergue list with a json Object for " + toString());
+					}
+					return;
+				} else if (type.isAssignableFrom(LinkedHashMap.class)) {
+					/**
+					 * It's a map: let's do an intelligent update.
+					 * Get current map content
+					 */
+					@SuppressWarnings("rawtypes")
+					LinkedHashMap current_map = new LinkedHashMap();
+					if (current_value != null) {
+						current_map.putAll((Map<?, ?>) current_value);
+					}
+					
+					if (value.isJsonArray()) {
+						throw new JsonSyntaxException("Can't mergue map with a json Array for " + toString());
+					} else if (value.isJsonPrimitive()) {
+						throw new JsonSyntaxException("Can't mergue map with a json Primitive for " + toString());
+					} else if (value.isJsonNull()) {
+						field.set(main_object_instance, null);
+					} else if (value.isJsonObject()) {
+						JsonObject jo_value = value.getAsJsonObject();
+						
+						current_map.keySet().removeIf(key -> {
+							if (jo_value.has((String) key) == false) {
+								callbackUpdateAPIForRemovedObject(target_generic_class_type, current_map.get(key));
+								return true;
+							}
+							return false;
+						});
+						
+						jo_value.entrySet().forEach(entry -> {
+							JsonElement sub_item = entry.getValue();
+							if (current_map.containsKey(entry.getKey())) {
+								if (sub_item.isJsonObject()) {
+									reconfigureActualObjectWithJson(target_generic_class_type, current_map.get(entry.getKey()), sub_item.getAsJsonObject());
+								} else if (sub_item.isJsonNull()) {
+									/**
+									 * Don't put null item in map.
+									 */
+								} else if (sub_item.isJsonPrimitive() | sub_item.isJsonArray()) {
+									current_map.put(entry.getKey(), gson.fromJson(sub_item, target_generic_class_type));
+								}
+							} else {
+								current_map.put(entry.getKey(), createNewSubItem(sub_item));
+							}
+						});
+						
+						field.set(main_object_instance, current_map);
+					}
+					return;
+				}
+			}
+			
+			if (current_value != null) {
+				callbackUpdateAPIForRemovedObject(target_generic_class_type, current_value);
+			}
+			
+			field.set(main_object_instance, gson.fromJson(value, type));
 		}
 		
-		boolean isList() {
-			return type.isAssignableFrom(ArrayList.class) && target_generic_class_type != null;
+		private Object createNewSubItem(JsonElement value) {
+			try {
+				Object new_item = instanceNewObjectFromClass(target_generic_class_type);
+				configureNewObjectWithJson(target_generic_class_type, new_item, value);
+				return new_item;
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException("Can't instantiate from " + target_generic_class_type, e);
+			}
 		}
 		
-		boolean isEnum() {
-			return false;
+		public String toString() {
+			return "field " + field.getName() + " (" + type.getSimpleName() + ") in " + target_class.getSimpleName();
 		}
 		
-		boolean isNumber() {
-			return false;
+		boolean checkValidators(JsonElement value) {
+			return validators.stream().map(v -> {
+				try {
+					return (DefaultValidator) instanceNewObjectFromClass(v);
+				} catch (ReflectiveOperationException e) {
+					throw new RuntimeException("Can't instance " + v.getName(), e);
+				}
+			}).allMatch(validator -> {
+				if (validator.getValidator().test(value) == false) {
+					if (log.isTraceEnabled()) {
+						log.trace("Don't pass validator " + validator.getClass().getSimpleName() + " for " + toString() + " with " + value.toString());
+					}
+					return false;
+				}
+				return true;
+			});
 		}
-		
-		boolean isBoolean() {
-			return false;
-		}
-		
-		boolean isString() {
-			return false;
-		}
-		
-		boolean isOtherObject() {
-			return isMap() == false && isList() == false && isEnum() == false && isNumber() == false && isBoolean() == false && isString() == false;
-		}*/
-		
 	}
 	
-	ConfiguredClassEntry(Class<T> target_class, JsonObject new_class_configuration) {
+	ConfiguredClassEntry(Gson gson, Class<T> target_class, JsonObject new_class_configuration) {
+		this.gson = gson;
+		if (gson == null) {
+			throw new NullPointerException("\"gson\" can't to be null");
+		}
 		this.target_class = target_class;
+		if (target_class == null) {
+			throw new NullPointerException("\"target_class\" can't to be null");
+		}
+		
 		created_instances = new ArrayList<>(1);
 		
 		field_definitions = new HashMap<>();
@@ -135,8 +275,6 @@ class ConfiguredClassEntry<T> {
 			}
 			
 			System.out.println("Ok, ArrayList " + f.getGenericType());// XXX
-		} else {
-			f.set(car, g.getGson().fromJson(conf_tree.get(field_name), type));
 		}
 		} catch (JsonSyntaxException | IllegalArgumentException | IllegalAccessException e) {
 		throw new RuntimeException(e);
@@ -189,4 +327,13 @@ class ConfiguredClassEntry<T> {
 	Class<T> getTargetClass() {
 		return target_class;
 	}
+	
+	protected abstract Object instanceNewObjectFromClass(Class<?> from_type) throws ReflectiveOperationException;
+	
+	protected abstract void configureNewObjectWithJson(Class<?> from_type, Object new_created_instance, JsonElement configuration);
+	
+	protected abstract void reconfigureActualObjectWithJson(Class<?> from_type, Object instance_to_update, JsonObject new_configuration);
+	
+	protected abstract void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback);
+	
 }

@@ -33,6 +33,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 public class ConfigurationUtility {
@@ -41,6 +43,7 @@ public class ConfigurationUtility {
 	// TODO4 inject conf files + vars + env
 	
 	private final Factory factory;
+	private final GsonKit gson_kit;
 	private final HashMap<String, Class<?>> class_mnemonics;
 	
 	private final HashMap<Class<?>, ConfiguredClassEntry<?>> configured_types;// TODO4 change to sync hash map ?
@@ -53,6 +56,7 @@ public class ConfigurationUtility {
 			throw new NullPointerException("\"factory\" can't to be null");
 		}
 		class_mnemonics = new HashMap<>();
+		gson_kit = factory.createGsonKit();
 		
 		configured_types = new HashMap<>();
 		configuration_files = new ArrayList<>();
@@ -238,6 +242,35 @@ public class ConfigurationUtility {
 		return this;
 	}
 	
+	private class InternalConfiguredClassEntry<T> extends ConfiguredClassEntry<T> {
+		
+		InternalConfiguredClassEntry(Gson gson, Class<T> target_class, JsonObject new_class_configuration) {
+			super(gson, target_class, new_class_configuration);
+		}
+		
+		protected Object instanceNewObjectFromClass(Class<?> from_type) throws ReflectiveOperationException {
+			return factory.create(from_type);
+		}
+		
+		@Override
+		protected void configureNewObjectWithJson(Class<?> from_type, Object new_created_instance, JsonElement configuration) {
+			// TODO Auto-generated method stub
+		}
+		
+		@Override
+		protected void reconfigureActualObjectWithJson(Class<?> from_type, Object instance_to_update, JsonObject new_configuration) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+		@Override
+		protected void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+	}
+	
 	public ConfigurationUtility injectConfiguration() {
 		synchronized (configuration_files) {
 			LinkedHashMap<ConfiguredClassEntry<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
@@ -258,7 +291,7 @@ public class ConfigurationUtility {
 									class_conf_to_update.put(current_class_entry, new_config_for_class);
 								}
 							} else {
-								configured_types.put(set_updated_class_name, new ConfiguredClassEntry<>(set_updated_class_name, new_config_for_class));
+								configured_types.put(set_updated_class_name, new InternalConfiguredClassEntry<>(gson_kit.getGson(), set_updated_class_name, new_config_for_class));
 							}
 						});
 					} catch (IOException e) {

@@ -38,6 +38,7 @@ public class ConfiguredClassEntryTest extends TestCase {
 	private static Logger log = Logger.getLogger(ConfiguredClassEntryTest.class);
 	
 	public void testClassReflexion() {
+		GsonKit g = new GsonKit();
 		
 		/**
 		 * field name -> its conf
@@ -46,7 +47,7 @@ public class ConfiguredClassEntryTest extends TestCase {
 		conf_tree.addProperty("color", "blue");
 		conf_tree.addProperty("size", 1);
 		
-		ConfiguredClassEntry<SingleCar> cce = new ConfiguredClassEntry<>(SingleCar.class, conf_tree);
+		ConfiguredClassEntry<SingleCar> cce = null;// new ConfiguredClassEntry<>(g.getGson(), SingleCar.class, conf_tree);
 		
 		SingleCar car = new SingleCar();
 		
