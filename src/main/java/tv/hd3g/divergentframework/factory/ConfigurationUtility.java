@@ -33,8 +33,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 public class ConfigurationUtility {
@@ -242,7 +240,7 @@ public class ConfigurationUtility {
 		return this;
 	}
 	
-	private class InternalConfiguredClassEntry<T> extends ConfiguredClassEntry<T> {
+	/*private class InternalConfiguredClassEntry<T> extends ConfiguredClassEntry<T> {
 		
 		InternalConfiguredClassEntry(Gson gson, Class<T> target_class, JsonObject new_class_configuration) {
 			super(gson, target_class, new_class_configuration);
@@ -269,7 +267,7 @@ public class ConfigurationUtility {
 			
 		}
 		
-	}
+	}*/
 	
 	public ConfigurationUtility injectConfiguration() {
 		synchronized (configuration_files) {
@@ -291,7 +289,7 @@ public class ConfigurationUtility {
 									class_conf_to_update.put(current_class_entry, new_config_for_class);
 								}
 							} else {
-								configured_types.put(set_updated_class_name, new InternalConfiguredClassEntry<>(gson_kit.getGson(), set_updated_class_name, new_config_for_class));
+								configured_types.put(set_updated_class_name, null);// TODO new InternalConfiguredClassEntry<>(gson_kit.getGson(), set_updated_class_name, new_config_for_class));
 							}
 						});
 					} catch (IOException e) {

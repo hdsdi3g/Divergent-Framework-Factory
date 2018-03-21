@@ -19,8 +19,13 @@ package tv.hd3g.divergentframework.factory.demo;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import tv.hd3g.divergentframework.factory.annotations.ConfigurableValidator;
+import tv.hd3g.divergentframework.factory.annotations.OnAfterInjectConfiguration;
+import tv.hd3g.divergentframework.factory.annotations.OnAfterUpdateConfiguration;
+import tv.hd3g.divergentframework.factory.annotations.OnBeforeRemovedInConfiguration;
+import tv.hd3g.divergentframework.factory.annotations.OnBeforeUpdateConfiguration;
 import tv.hd3g.divergentframework.factory.annotations.TargetGenericClassType;
 import tv.hd3g.divergentframework.factory.validation.NotEmptyNotZeroValidator;
 
@@ -81,4 +86,30 @@ public class SingleCar {
 	public float getSize() {
 		return size;
 	}
+	
+	public AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
+	public AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
+	public AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
+	public AtomicInteger counter_BeforeUpdateConfiguration = new AtomicInteger();
+	
+	@OnAfterInjectConfiguration
+	private void callbackOnAfterInjectConfiguration() {
+		counter_AfterInjectConfiguration.getAndIncrement();
+	}
+	
+	@OnBeforeRemovedInConfiguration
+	private void callbackOnBeforeRemovedInConfiguration() {
+		counter_BeforeRemovedInConfiguration.getAndIncrement();
+	}
+	
+	@OnAfterUpdateConfiguration
+	private void callbackOnAfterUpdateConfiguration() {
+		counter_AfterUpdateConfiguration.getAndIncrement();
+	}
+	
+	@OnBeforeUpdateConfiguration
+	private void callbackOnBeforeUpdateConfiguration() {
+		counter_BeforeUpdateConfiguration.getAndIncrement();
+	}
+	
 }

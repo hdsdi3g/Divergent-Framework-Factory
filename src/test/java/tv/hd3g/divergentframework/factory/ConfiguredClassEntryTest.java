@@ -37,7 +37,7 @@ import tv.hd3g.divergentframework.factory.demo.SingleCar;
 public class ConfiguredClassEntryTest extends TestCase {
 	private static Logger log = Logger.getLogger(ConfiguredClassEntryTest.class);
 	
-	public void testClassReflexion() {
+	public void testClassReflexion() throws Exception {
 		GsonKit g = new GsonKit();
 		
 		/**
