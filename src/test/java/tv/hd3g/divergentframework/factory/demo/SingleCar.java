@@ -41,19 +41,21 @@ public class SingleCar {
 	@ConfigurableValidator(NotEmptyNotZeroValidator.class)
 	private ArrayList<String> passager_names;
 	
+	@TargetGenericClassType(Point.class)
+	private Map<String, Point> points_by_names;
+	
 	@TargetGenericClassType(Wheel.class)
 	private ArrayList<Wheel> possible_wheel_type;
 	
-	@TargetGenericClassType(Point.class)
-	private Map<String, Point> points_by_names;
+	private Wheel default_wheel;
 	
 	public enum WheelType {
 		tractor, formula1, suv, sedan, truck;
 	}
 	
 	public static class Wheel {
-		int size;
-		WheelType type;
+		public int size;
+		public WheelType type;
 		
 		@OnBeforeRemovedInConfiguration
 		private void callbackOnBeforeRemovedInConfiguration() {
@@ -61,6 +63,42 @@ public class SingleCar {
 		}
 		
 		public final AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
+		
+		@OnAfterUpdateConfiguration
+		private void callbackOnAfterUpdateConfiguration() {
+			counter_AfterUpdateConfiguration.getAndIncrement();
+		}
+		
+		public final AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
+		
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + size;
+			result = prime * result + (type == null ? 0 : type.hashCode());
+			return result;
+		}
+		
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (!(obj instanceof Wheel)) {
+				return false;
+			}
+			Wheel other = (Wheel) obj;
+			if (size != other.size) {
+				return false;
+			}
+			if (type != other.type) {
+				return false;
+			}
+			return true;
+		}
 		
 	}
 	
@@ -93,6 +131,10 @@ public class SingleCar {
 	
 	public float getSize() {
 		return size;
+	}
+	
+	public Wheel getDefault_wheel() {
+		return default_wheel;
 	}
 	
 	public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();

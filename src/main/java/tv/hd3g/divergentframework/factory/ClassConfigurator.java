@@ -84,24 +84,28 @@ class ClassConfigurator {
 				throw new NullPointerException("\"target_class\" can't to be null");
 			}
 			
+			if (isClassIsBlacklisted(target_class)) {
+				throw new ClassCastException("Can't analyst blacklisted class " + target_class);
+			}
+			
 			field_definitions = new HashMap<>();
 			
 			Arrays.asList(target_class.getDeclaredFields()).stream().filter(f -> {
-				return f.trySetAccessible();
-			}).filter(f -> {
 				return Modifier.isStatic(f.getModifiers()) == false;
 			}).filter(f -> {
 				return Modifier.isFinal(f.getModifiers()) == false;
+			}).filter(m -> {
+				return m.trySetAccessible();
 			}).forEach(f -> {
 				field_definitions.put(f.getName(), new FieldDefinition(f));
 			});
 			
 			List<Method> all_methods = Stream.concat(Arrays.asList(target_class.getDeclaredMethods()).stream(), Arrays.asList(target_class.getMethods()).stream()).distinct().filter(m -> {
-				return m.trySetAccessible();
-			}).filter(m -> {
 				return Modifier.isStatic(m.getModifiers()) == false;
 			}).filter(m -> {
 				return Modifier.isNative(m.getModifiers()) == false;
+			}).filter(m -> {
+				return m.trySetAccessible();
 			}).collect(Collectors.toList());
 			
 			Predicate<Method> annotationOnAfterInjectConfiguration = m -> m.getAnnotation(OnAfterInjectConfiguration.class) != null;
@@ -251,19 +255,29 @@ class ClassConfigurator {
 							
 							for (int pos = 0; pos < ja_value.size(); pos++) {
 								if (ja_value.get(pos).isJsonNull()) {
+									log.warn("Please don't use null values in a Json array");
 									continue;
 								}
 								Object newer_object = createNewSubItemInGenericObject(ja_value.get(pos));
 								
 								if (current_list.size() > pos) {
+									log.info("INLIST: " + pos + " " + newer_object + " " + current_list.get(pos));
 									if (current_list.get(pos).equals(newer_object) == false) {
 										callbackUpdateAPIForRemovedObject(target_generic_class_type, current_list.get(pos));
 										current_list.set(pos, newer_object);
+										log.info("RESET: " + pos + " " + newer_object + " " + current_list.get(pos));
 									}
 								} else {
+									log.info("ADD: " + pos + " " + newer_object + " ");
 									current_list.add(newer_object);
 								}
 							}
+							
+							for (int pos = ja_value.size() - 1; pos < current_list.size(); pos++) {
+								log.info("REMOVE: " + pos);
+								current_list.remove(pos);
+							}
+							
 							field.set(main_object_instance, current_list);
 						} else if (value.isJsonPrimitive()) {
 							Object new_item = createNewSubItemInGenericObject(value);
@@ -395,8 +409,8 @@ class ClassConfigurator {
 			throw new ClassCastException("Can't push configuration in an AnonymousClass");
 		} else if (from_type.isSynthetic()) {
 			throw new ClassCastException("Can't push configuration in a Synthetic");
-		} else if (from_type.isMemberClass()) {
-			throw new ClassCastException("Can't push configuration in a MemberClass");
+			// } else if (from_type.isMemberClass()) {
+			// throw new ClassCastException("Can't push configuration in a MemberClass");
 		} else if (from_type.isLocalClass()) {
 			throw new ClassCastException("Can't push configuration in a LocalClass");
 		} else if (Number.class.isAssignableFrom(from_type)) {

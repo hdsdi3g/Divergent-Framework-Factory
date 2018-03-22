@@ -16,6 +16,7 @@
 */
 package tv.hd3g.divergentframework.factory;
 
+import java.awt.Point;
 import java.net.InetSocketAddress;
 
 import javax.mail.internet.InternetAddress;
@@ -25,6 +26,8 @@ import com.google.gson.JsonObject;
 
 import junit.framework.TestCase;
 import tv.hd3g.divergentframework.factory.demo.SingleCar;
+import tv.hd3g.divergentframework.factory.demo.SingleCar.Wheel;
+import tv.hd3g.divergentframework.factory.demo.SingleCar.WheelType;
 
 public class ClassConfiguratorTest extends TestCase {
 	
@@ -166,7 +169,7 @@ public class ClassConfiguratorTest extends TestCase {
 		assertEquals(1, car.counter_AfterUpdateConfiguration.get());
 	}
 	
-	public void testSimpleArrayList() {
+	public void testSimpleList() {
 		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
 			try {
 				return c.getConstructor().newInstance();
@@ -196,7 +199,144 @@ public class ClassConfiguratorTest extends TestCase {
 		assertEquals("Louie", car.getPassager_names().get(2));
 	}
 	
-	// XXX test map
+	public void testSimpleMap() {
+		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+			try {
+				return c.getConstructor().newInstance();
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException(e);
+			}
+		});
+		
+		JsonObject conf_tree = new JsonObject();
+		JsonObject jo = new JsonObject();
+		
+		JsonObject jo_p1 = new JsonObject();
+		jo_p1.addProperty("x", 1);
+		jo_p1.addProperty("y", 2);
+		jo.add("first", jo_p1);
+		
+		JsonObject jo_p2 = new JsonObject();
+		jo_p2.addProperty("x", 3);
+		jo_p2.addProperty("y", 4);
+		jo.add("second", jo_p2);
+		
+		conf_tree.add("points_by_names", jo);
+		
+		SingleCar car = new SingleCar();
+		
+		assertNull(car.getPoints_by_names());
+		
+		cc.configureNewObjectWithJson(SingleCar.class, car, conf_tree);
+		
+		assertNotNull(car.getPoints_by_names());
+		assertEquals(2, car.getPoints_by_names().size());
+		
+		assertNotNull(car.getPoints_by_names().containsKey("first"));
+		assertNotNull(car.getPoints_by_names().containsKey("second"));
+		
+		assertEquals(new Point(1, 2), car.getPoints_by_names().get("first"));
+		assertEquals(new Point(3, 4), car.getPoints_by_names().get("second"));
+		
+	}
 	
-	// TODO2 test with Wheel.class: assertEquals(0, wheel.counter_BeforeRemovedInConfiguration.get());
+	public void testSubclass() {
+		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+			try {
+				return c.getConstructor().newInstance();
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException(e);
+			}
+		});
+		
+		JsonObject conf_tree = new JsonObject();
+		JsonObject jo = new JsonObject();
+		jo.addProperty("size", 5);
+		jo.addProperty("type", WheelType.sedan.name());
+		conf_tree.add("default_wheel", jo);
+		
+		SingleCar car = new SingleCar();
+		
+		assertNull(car.getDefault_wheel());
+		
+		cc.configureNewObjectWithJson(SingleCar.class, car, conf_tree);
+		
+		assertNotNull(car.getDefault_wheel());
+		
+		Wheel real_wheel = new Wheel();
+		real_wheel.size = 5;
+		real_wheel.type = WheelType.sedan;
+		assertEquals(real_wheel, car.getDefault_wheel());
+	}
+	
+	public void testComplexList() {
+		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+			try {
+				return c.getConstructor().newInstance();
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException(e);
+			}
+		});
+		
+		JsonObject jo_wheel1 = new JsonObject();
+		jo_wheel1.addProperty("size", 1);
+		jo_wheel1.addProperty("type", WheelType.sedan.name());
+		
+		JsonObject jo_wheel2 = new JsonObject();
+		jo_wheel2.addProperty("size", 2);
+		jo_wheel2.addProperty("type", WheelType.formula1.name());
+		
+		JsonArray ja = new JsonArray();
+		ja.add(jo_wheel1);
+		ja.add(jo_wheel2);
+		
+		JsonObject conf_tree = new JsonObject();
+		conf_tree.add("possible_wheel_type", ja);
+		
+		SingleCar car = new SingleCar();
+		
+		assertNull(car.getPossible_wheel_type());
+		
+		cc.configureNewObjectWithJson(SingleCar.class, car, conf_tree);
+		
+		assertNotNull(car.getPossible_wheel_type());
+		assertEquals(2, car.getPossible_wheel_type().size());
+		
+		Wheel real_wheel1 = new Wheel();
+		real_wheel1.size = 1;
+		real_wheel1.type = WheelType.sedan;
+		
+		Wheel real_wheel2 = new Wheel();
+		real_wheel2.size = 2;
+		real_wheel2.type = WheelType.formula1;
+		
+		assertEquals(real_wheel1, car.getPossible_wheel_type().get(0));
+		assertEquals(real_wheel2, car.getPossible_wheel_type().get(1));
+		
+		assertEquals(0, car.getPossible_wheel_type().get(0).counter_BeforeRemovedInConfiguration.get());
+		assertEquals(0, car.getPossible_wheel_type().get(1).counter_BeforeRemovedInConfiguration.get());
+		
+		assertEquals(0, car.getPossible_wheel_type().get(0).counter_AfterUpdateConfiguration.get());
+		assertEquals(0, car.getPossible_wheel_type().get(1).counter_AfterUpdateConfiguration.get());
+		
+		jo_wheel2.remove("size");
+		jo_wheel2.addProperty("type", WheelType.suv.name());
+		ja.remove(0);
+		assertEquals(1, conf_tree.get("possible_wheel_type").getAsJsonArray().size());
+		
+		Wheel normally_removed_from_list = car.getPossible_wheel_type().get(0);
+		cc.reconfigureActualObjectWithJson(SingleCar.class, car, conf_tree);
+		
+		assertNotNull(car.getPossible_wheel_type());
+		assertEquals(1, car.getPossible_wheel_type().size());
+		assertEquals(WheelType.suv, car.getPossible_wheel_type().get(0).type);
+		assertEquals(2, car.getPossible_wheel_type().get(0).size);
+		
+		assertEquals(0, car.getPossible_wheel_type().get(0).counter_BeforeRemovedInConfiguration.get());
+		assertEquals(1, car.getPossible_wheel_type().get(0).counter_AfterUpdateConfiguration.get());
+		
+		assertEquals(1, normally_removed_from_list.counter_BeforeRemovedInConfiguration.get());
+		assertEquals(0, normally_removed_from_list.counter_AfterUpdateConfiguration.get());
+	}
+	
 }
