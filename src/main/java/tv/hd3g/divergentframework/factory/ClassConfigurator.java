@@ -34,7 +34,6 @@ import java.util.stream.Stream;
 import org.apache.log4j.Logger;
 
 import com.google.common.base.Function;
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -53,13 +52,13 @@ class ClassConfigurator {
 	
 	private final ConcurrentHashMap<Class<?>, ClassDefinition> class_definitions;
 	
-	private final Gson gson;
+	private final GsonKit gson_kit;
 	private final Function<Class<?>, Object> instanceNewObjectFromClass;
 	
-	ClassConfigurator(Gson gson, Function<Class<?>, Object> instanceNewObjectFromClass) {
-		this.gson = gson;
-		if (gson == null) {
-			throw new NullPointerException("\"gson\" can't to be null");
+	ClassConfigurator(GsonKit gson_kit, Function<Class<?>, Object> instanceNewObjectFromClass) {
+		this.gson_kit = gson_kit;
+		if (gson_kit == null) {
+			throw new NullPointerException("\"gson_kit\" can't to be null");
 		}
 		this.instanceNewObjectFromClass = instanceNewObjectFromClass;
 		if (instanceNewObjectFromClass == null) {
@@ -325,7 +324,7 @@ class ClassConfigurator {
 										 * Don't put null item in map.
 										 */
 									} else if (sub_item.isJsonPrimitive() | sub_item.isJsonArray()) {
-										current_map.put(entry.getKey(), gson.fromJson(sub_item, target_generic_class_type));
+										current_map.put(entry.getKey(), gson_kit.getGson().fromJson(sub_item, target_generic_class_type));
 									}
 								} else {
 									current_map.put(entry.getKey(), createNewSubItemInGenericObject(sub_item));
@@ -342,19 +341,19 @@ class ClassConfigurator {
 					callbackUpdateAPIForRemovedObject(type, current_value);
 				}
 				
-				field.set(main_object_instance, gson.fromJson(value, type));
+				field.set(main_object_instance, gson_kit.getGson().fromJson(value, type));
 			}
 			
 			private Object createNewSubItemInGenericObject(JsonElement value) {
 				if (value.isJsonArray()) {
 					log.warn("Please don't put an json array in a json generic <" + target_generic_class_type + "> " + value + " in " + toString());
-					return gson.fromJson(value, target_generic_class_type);
+					return gson_kit.getGson().fromJson(value, target_generic_class_type);
 				} else if (value.isJsonObject()) {
 					Object new_item = instanceNewObjectFromClass.apply(target_generic_class_type);
 					configureNewObjectWithJson(target_generic_class_type, new_item, value.getAsJsonObject());
 					return new_item;
 				} else if (value.isJsonPrimitive()) {
-					return gson.fromJson(value, target_generic_class_type);
+					return gson_kit.getGson().fromJson(value, target_generic_class_type);
 				}
 				throw new NullPointerException("\"value\" can't to be a null json");
 			}
@@ -385,17 +384,70 @@ class ClassConfigurator {
 		});
 	}
 	
+	boolean isClassIsBlacklisted(Class<?> from_type) {
+		if (from_type.isArray()) {
+			throw new ClassCastException("Can't push configuration in an Array");
+		} else if (from_type.isInterface()) {
+			throw new ClassCastException("Can't push configuration in an Interface");
+		} else if (from_type.isAnnotation()) {
+			throw new ClassCastException("Can't push configuration in an Annotation");
+		} else if (from_type.isAnonymousClass()) {
+			throw new ClassCastException("Can't push configuration in an AnonymousClass");
+		} else if (from_type.isSynthetic()) {
+			throw new ClassCastException("Can't push configuration in a Synthetic");
+		} else if (from_type.isMemberClass()) {
+			throw new ClassCastException("Can't push configuration in a MemberClass");
+		} else if (from_type.isLocalClass()) {
+			throw new ClassCastException("Can't push configuration in a LocalClass");
+		} else if (Number.class.isAssignableFrom(from_type)) {
+			return true;
+		} else if (String.class.isAssignableFrom(from_type)) {
+			return true;
+		} else if (from_type.isPrimitive()) {
+			return true;
+		} else if (from_type.isEnum()) {
+			return true;
+		}
+		
+		return gson_kit.getAllSerializedClasses(false).anyMatch(type -> {
+			return ((Class<?>) type).isAssignableFrom(from_type);
+		});
+	}
+	
+	/**
+	 * @param configuration if empty, do nothing
+	 */
 	void configureNewObjectWithJson(Class<?> from_type, Object new_created_instance, JsonObject configuration) {
+		if (isClassIsBlacklisted(from_type)) {
+			log.debug("Can't configure " + from_type + " (internaly blacklisted)");
+			return;
+		} else if (configuration.size() == 0) {
+			return;
+		}
 		log.debug("Configure " + from_type + " with " + configuration);
 		getFrom(from_type).setObjectConfiguration(new_created_instance, configuration).callbackOnAfterInjectConfiguration(new_created_instance);
 	}
 	
+	/**
+	 * @param new_configuration if empty, do nothing
+	 */
 	void reconfigureActualObjectWithJson(Class<?> from_type, Object instance_to_update, JsonObject new_configuration) {
+		if (isClassIsBlacklisted(from_type)) {
+			log.debug("Can't configure " + from_type + " (internaly blacklisted)");
+			return;
+		} else if (new_configuration.size() == 0) {
+			return;
+		}
+		
 		log.debug("Reconfigure " + from_type + " with " + new_configuration);
 		getFrom(from_type).callbackOnBeforeUpdateConfiguration(instance_to_update).setObjectConfiguration(instance_to_update, new_configuration).callbackOnAfterUpdateConfiguration(instance_to_update);
 	}
 	
 	private void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback) {
+		if (isClassIsBlacklisted(from_type)) {
+			log.debug("Can't configure " + from_type + " (internaly blacklisted)");
+			return;
+		}
 		log.debug("Remove " + from_type);
 		getFrom(from_type).callbackOnBeforeRemovedInConfiguration(removed_instance_to_callback);
 	}

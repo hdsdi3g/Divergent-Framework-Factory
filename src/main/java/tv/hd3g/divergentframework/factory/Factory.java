@@ -289,4 +289,5 @@ public class Factory {
 		return g_kit;
 	}
 	
+	// TODO4 During the creation with Factory, if a field has a class type @SingleInstance, do a dynamic Injection & configure it, before current class conf.
 }

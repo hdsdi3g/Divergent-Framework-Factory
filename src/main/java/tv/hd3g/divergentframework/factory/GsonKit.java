@@ -37,6 +37,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
@@ -397,6 +398,18 @@ public class GsonKit {
 	
 	<T> void registerGsonSimpleDeSerializer(Type type, Class<T> object_type, Function<T, JsonElement> adapter_serializer, Function<JsonElement, T> adapter_deserializer) {
 		gson_simple_serializator.add(new De_Serializator(type, makeDeSerializer(object_type, adapter_serializer, adapter_deserializer)));
+	}
+	
+	Stream<Type> getAllSerializedClasses(boolean only_gson_simple) {
+		if (only_gson_simple) {
+			return gson_simple_serializator.stream().map(s -> {
+				return s.type;
+			});
+		} else {
+			return Stream.concat(gson_simple_serializator.stream(), gson_full_serializator.stream()).distinct().map(s -> {
+				return s.type;
+			});
+		}
 	}
 	
 	private <T> GsonDeSerializer<T> makeDeSerializer(Class<T> object_type, Function<T, JsonElement> adapter_serializer, Function<JsonElement, T> adapter_deserializer) {

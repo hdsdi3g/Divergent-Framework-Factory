@@ -54,6 +54,14 @@ public class SingleCar {
 	public static class Wheel {
 		int size;
 		WheelType type;
+		
+		@OnBeforeRemovedInConfiguration
+		private void callbackOnBeforeRemovedInConfiguration() {
+			counter_BeforeRemovedInConfiguration.getAndIncrement();
+		}
+		
+		public final AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
+		
 	}
 	
 	public SingleCar() {
@@ -87,19 +95,13 @@ public class SingleCar {
 		return size;
 	}
 	
-	public AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
-	public AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
-	public AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
-	public AtomicInteger counter_BeforeUpdateConfiguration = new AtomicInteger();
+	public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
+	public final AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
+	public final AtomicInteger counter_BeforeUpdateConfiguration = new AtomicInteger();
 	
 	@OnAfterInjectConfiguration
 	private void callbackOnAfterInjectConfiguration() {
 		counter_AfterInjectConfiguration.getAndIncrement();
-	}
-	
-	@OnBeforeRemovedInConfiguration
-	private void callbackOnBeforeRemovedInConfiguration() {
-		counter_BeforeRemovedInConfiguration.getAndIncrement();
 	}
 	
 	@OnAfterUpdateConfiguration

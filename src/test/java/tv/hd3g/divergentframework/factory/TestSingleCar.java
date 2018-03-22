@@ -19,7 +19,8 @@ package tv.hd3g.divergentframework.factory;
 import junit.framework.TestCase;
 import tv.hd3g.divergentframework.factory.demo.SingleCar;
 
-public class TestSingleCar extends TestCase {
+@Deprecated
+public class TestSingleCar extends TestCase {// XXX move all to Factory and conf tests
 	
 	public void testSimpleNew() {
 		SingleCar sc = new SingleCar();
