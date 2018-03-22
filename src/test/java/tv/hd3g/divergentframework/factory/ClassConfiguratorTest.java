@@ -17,7 +17,9 @@
 package tv.hd3g.divergentframework.factory;
 
 import java.awt.Point;
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.UUID;
 
 import javax.mail.internet.InternetAddress;
 
@@ -28,6 +30,11 @@ import junit.framework.TestCase;
 import tv.hd3g.divergentframework.factory.demo.SingleCar;
 import tv.hd3g.divergentframework.factory.demo.SingleCar.Wheel;
 import tv.hd3g.divergentframework.factory.demo.SingleCar.WheelType;
+import tv.hd3g.divergentframework.factory.demo.TMainSub;
+import tv.hd3g.divergentframework.factory.demo.TMainSub.Counters;
+import tv.hd3g.divergentframework.factory.demo.TMainSub.SubA;
+import tv.hd3g.divergentframework.factory.demo.TMainSub.SubA.SubB;
+import tv.hd3g.divergentframework.factory.demo.TMainSub.SubC;
 
 public class ClassConfiguratorTest extends TestCase {
 	
@@ -316,8 +323,8 @@ public class ClassConfiguratorTest extends TestCase {
 		assertEquals(0, car.getPossible_wheel_type().get(0).counter_BeforeRemovedInConfiguration.get());
 		assertEquals(0, car.getPossible_wheel_type().get(1).counter_BeforeRemovedInConfiguration.get());
 		
-		assertEquals(0, car.getPossible_wheel_type().get(0).counter_AfterUpdateConfiguration.get());
-		assertEquals(0, car.getPossible_wheel_type().get(1).counter_AfterUpdateConfiguration.get());
+		assertEquals(1, car.getPossible_wheel_type().get(0).counter_AfterInjectConfiguration.get());
+		assertEquals(1, car.getPossible_wheel_type().get(1).counter_AfterInjectConfiguration.get());
 		
 		jo_wheel2.remove("size");
 		jo_wheel2.addProperty("type", WheelType.suv.name());
@@ -330,13 +337,132 @@ public class ClassConfiguratorTest extends TestCase {
 		assertNotNull(car.getPossible_wheel_type());
 		assertEquals(1, car.getPossible_wheel_type().size());
 		assertEquals(WheelType.suv, car.getPossible_wheel_type().get(0).type);
-		assertEquals(2, car.getPossible_wheel_type().get(0).size);
+		assertEquals(0, car.getPossible_wheel_type().get(0).size);
 		
 		assertEquals(0, car.getPossible_wheel_type().get(0).counter_BeforeRemovedInConfiguration.get());
-		assertEquals(1, car.getPossible_wheel_type().get(0).counter_AfterUpdateConfiguration.get());
+		assertEquals(1, car.getPossible_wheel_type().get(0).counter_AfterInjectConfiguration.get());
 		
 		assertEquals(1, normally_removed_from_list.counter_BeforeRemovedInConfiguration.get());
-		assertEquals(0, normally_removed_from_list.counter_AfterUpdateConfiguration.get());
+		assertEquals(1, normally_removed_from_list.counter_AfterInjectConfiguration.get());
+	}
+	
+	public void testComplexMap() throws IOException {
+		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+			try {
+				return c.getConstructor().newInstance();
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException(e);
+			}
+		});
+		
+		TMainSub main = new TMainSub();
+		
+		final UUID uuid = UUID.randomUUID();
+		
+		/**
+		 * Push tree
+		 */
+		JsonObject conf_tree = ConfigurationFileType.YAML.getContent(pw -> {
+			pw.println("test:");
+			pw.println("   sub_a:");// var
+			pw.println("      a_1:");// map key
+			pw.println("         sub_b:");// var
+			pw.println("            b_1:");// map key
+			pw.println("               sub_c:");// var
+			pw.println("                  c_1:");// map key
+			pw.println("                     uuid: \"" + uuid + "\"");
+		}).get("test");
+		
+		cc.configureNewObjectWithJson(TMainSub.class, main, conf_tree);
+		
+		assertNotNull(main.sub_a);
+		assertNotNull(main.sub_a.get("a_1"));
+		assertNotNull(main.sub_a.get("a_1").sub_b);
+		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_1"));
+		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_1").sub_c);
+		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_1").sub_c.get("c_1").uuid);
+		assertEquals(uuid, main.sub_a.get("a_1").sub_b.get("b_1").sub_c.get("c_1").uuid);
+		
+		SubA actual_a_1 = main.sub_a.get("a_1");
+		SubB actual_b_1 = main.sub_a.get("a_1").sub_b.get("b_1");
+		SubC actual_c_1 = main.sub_a.get("a_1").sub_b.get("b_1").sub_c.get("c_1");
+		
+		checkCountersTMainSub("Pass1", actual_a_1, 1, 0, 0, 0);
+		checkCountersTMainSub("Pass1", actual_b_1, 1, 0, 0, 0);
+		checkCountersTMainSub("Pass1", actual_c_1, 1, 0, 0, 0);
+		
+		/**
+		 * Update intermediate branch
+		 */
+		conf_tree = ConfigurationFileType.YAML.getContent(pw -> {
+			pw.println("test:");
+			pw.println("   sub_a:");// var
+			pw.println("      a_1:");// map key, CHANGED
+			pw.println("         sub_b:");// var
+			pw.println("            b_2:");// map key, b_1 REMOVED, b_2 ADDED
+			pw.println("               sub_c:");// var
+			pw.println("                  c_1:");// map key, REMOVED + ADDED
+			pw.println("                     uuid: \"" + uuid + "\"");
+		}).get("test");
+		
+		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		
+		assertNotNull(main.sub_a);
+		assertNotNull(main.sub_a.get("a_1"));
+		assertNotNull(main.sub_a.get("a_1").sub_b);
+		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_2"));
+		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_2").sub_c);
+		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1").uuid);
+		assertEquals(uuid, main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1").uuid);
+		
+		SubB actual_b_2 = main.sub_a.get("a_1").sub_b.get("b_2");
+		
+		assertEquals(actual_a_1, main.sub_a.get("a_1"));
+		assertNotSame(actual_b_1, main.sub_a.get("a_1").sub_b.get("b_2"));
+		assertNotSame(actual_c_1, main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1"));
+		
+		checkCountersTMainSub("Pass2", actual_a_1, 1, 1, 1, 0);
+		checkCountersTMainSub("Pass2", actual_b_1, 1, 0, 0, 1);
+		checkCountersTMainSub("Pass2", actual_b_2, 1, 0, 0, 0);
+		checkCountersTMainSub("Pass2", main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1"), 1, 0, 0, 0);
+		checkCountersTMainSub("Pass2", actual_c_1, 1, 0, 0, 0);
+		
+		actual_c_1 = main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1");
+		checkCountersTMainSub("Pass2", actual_c_1, 1, 0, 0, 0);
+		
+		/**
+		 * Change last item
+		 */
+		UUID uuid2 = UUID.randomUUID();
+		conf_tree = ConfigurationFileType.YAML.getContent(pw -> {
+			pw.println("test:");
+			pw.println("   sub_a:");// var
+			pw.println("      a_1:");// map key
+			pw.println("         sub_b:");// var
+			pw.println("            b_2:");// map key
+			pw.println("               sub_c:");// var
+			pw.println("                  c_1:");// map key
+			pw.println("                     uuid: \"" + uuid2 + "\"");// UPDATED
+		}).get("test");
+		
+		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		
+		checkCountersTMainSub("Pass3", main.sub_a.get("a_1"), 1, 2, 2, 0);
+		checkCountersTMainSub("Pass3", main.sub_a.get("a_1").sub_b.get("b_2"), 1, 1, 1, 0);
+		checkCountersTMainSub("Pass3", main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1"), 1, 1, 1, 0);
+		assertEquals(uuid2, main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1").uuid);
+		
+		// TODO Test sub remove
+		// TODO Test tree change (another leaf change but existant leafs must still same)
+	}
+	
+	static void checkCountersTMainSub(String message, Counters to_check, int expected_after_inject, int expected_before_update, int expected_after_update, int expected_before_remove) {
+		assertNotNull(to_check);
+		
+		assertEquals(to_check.getClass().getSimpleName() + " " + message + " AfterInject", expected_after_inject, to_check.counter_AfterInjectConfiguration.get());
+		assertEquals(to_check.getClass().getSimpleName() + " " + message + " BeforeUpdate", expected_before_update, to_check.counter_BeforeUpdateConfiguration.get());
+		assertEquals(to_check.getClass().getSimpleName() + " " + message + " AfterUpdate", expected_after_update, to_check.counter_AfterUpdateConfiguration.get());
+		assertEquals(to_check.getClass().getSimpleName() + " " + message + " BeforeRemoved", expected_before_remove, to_check.counter_BeforeRemovedInConfiguration.get());
 	}
 	
 }

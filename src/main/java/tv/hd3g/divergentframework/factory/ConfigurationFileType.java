@@ -20,7 +20,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.configuration.ConfigurationException;
@@ -283,6 +287,12 @@ enum ConfigurationFileType {
 			return f_type.getExtentions().stream();
 		}).collect(Collectors.toList());
 		CONFIG_FILE_EXTENTIONS = all_extensions.toArray(new String[0]);
+	}
+	
+	HashMap<String, JsonObject> getContent(Consumer<PrintWriter> source) throws IOException {
+		StringWriter strOut = new StringWriter();
+		source.accept(new PrintWriter(strOut));
+		return this.getContent(new StringReader(strOut.toString()));
 	}
 	
 }

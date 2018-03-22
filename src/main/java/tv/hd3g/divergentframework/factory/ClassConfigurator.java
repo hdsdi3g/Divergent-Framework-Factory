@@ -100,7 +100,16 @@ class ClassConfigurator {
 				field_definitions.put(f.getName(), new FieldDefinition(f));
 			});
 			
-			List<Method> all_methods = Stream.concat(Arrays.asList(target_class.getDeclaredMethods()).stream(), Arrays.asList(target_class.getMethods()).stream()).distinct().filter(m -> {
+			/**
+			 * Class.getDeclaredMethods() gets public, protected, package and private methods, but excludes inherited methods.
+			 */
+			Stream<Method> declared_methods = Arrays.asList(target_class.getDeclaredMethods()).stream();
+			/**
+			 * Class.getMethods gets inherited methods, but only the public ones.
+			 */
+			Stream<Method> methods = Arrays.asList(target_class.getMethods()).stream();
+			
+			List<Method> all_methods = Stream.concat(declared_methods, methods).distinct().filter(m -> {
 				return Modifier.isStatic(m.getModifiers()) == false;
 			}).filter(m -> {
 				return Modifier.isNative(m.getModifiers()) == false;
@@ -253,28 +262,42 @@ class ClassConfigurator {
 						if (value.isJsonArray()) {
 							JsonArray ja_value = value.getAsJsonArray();
 							
+							ArrayList<Object> newer_list = new ArrayList<>();
+							newer_list.ensureCapacity(ja_value.size());
+							
+							/**
+							 * Prepare comparison list
+							 */
 							for (int pos = 0; pos < ja_value.size(); pos++) {
 								if (ja_value.get(pos).isJsonNull()) {
 									log.warn("Please don't use null values in a Json array");
 									continue;
 								}
-								Object newer_object = createNewSubItemInGenericObject(ja_value.get(pos));
+								newer_list.add(createNewSubItemInGenericObject(ja_value.get(pos)));
+							}
+							
+							for (int pos = 0; pos < newer_list.size(); pos++) {
+								Object newer_object = newer_list.get(pos);
 								
-								if (current_list.size() > pos) {
-									log.info("INLIST: " + pos + " " + newer_object + " " + current_list.get(pos));
-									if (current_list.get(pos).equals(newer_object) == false) {
-										callbackUpdateAPIForRemovedObject(target_generic_class_type, current_list.get(pos));
+								Object current_object = null;
+								if (pos < current_list.size()) {
+									current_object = current_list.get(pos);
+									
+									if (newer_object.equals(current_object) == false) {
+										callbackUpdateAPIForRemovedObject(target_generic_class_type, current_object);
 										current_list.set(pos, newer_object);
-										log.info("RESET: " + pos + " " + newer_object + " " + current_list.get(pos));
+									} else {
+										/**
+										 * Same Object
+										 */
 									}
 								} else {
-									log.info("ADD: " + pos + " " + newer_object + " ");
 									current_list.add(newer_object);
 								}
 							}
 							
-							for (int pos = ja_value.size() - 1; pos < current_list.size(); pos++) {
-								log.info("REMOVE: " + pos);
+							for (int pos = newer_list.size(); pos < current_list.size(); pos++) {
+								callbackUpdateAPIForRemovedObject(target_generic_class_type, current_list.get(pos));
 								current_list.remove(pos);
 							}
 							
@@ -356,6 +379,14 @@ class ClassConfigurator {
 				}
 				
 				field.set(main_object_instance, gson_kit.getGson().fromJson(value, type));
+			}
+			
+			private void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback) {
+				if (isClassIsBlacklisted(from_type)) {
+					return;
+				}
+				log.debug("Remove " + from_type);
+				getFrom(from_type).callbackOnBeforeRemovedInConfiguration(removed_instance_to_callback);
 			}
 			
 			private Object createNewSubItemInGenericObject(JsonElement value) {
@@ -455,15 +486,6 @@ class ClassConfigurator {
 		
 		log.debug("Reconfigure " + from_type + " with " + new_configuration);
 		getFrom(from_type).callbackOnBeforeUpdateConfiguration(instance_to_update).setObjectConfiguration(instance_to_update, new_configuration).callbackOnAfterUpdateConfiguration(instance_to_update);
-	}
-	
-	private void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback) {
-		if (isClassIsBlacklisted(from_type)) {
-			log.debug("Can't configure " + from_type + " (internaly blacklisted)");
-			return;
-		}
-		log.debug("Remove " + from_type);
-		getFrom(from_type).callbackOnBeforeRemovedInConfiguration(removed_instance_to_callback);
 	}
 	
 }

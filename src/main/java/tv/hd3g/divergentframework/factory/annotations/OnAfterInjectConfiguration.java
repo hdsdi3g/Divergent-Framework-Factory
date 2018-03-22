@@ -23,7 +23,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Only triggered one time
+ * Only triggered one time.
+ * Visible for public, protected, package and private class methods, and public only inherited methods.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(METHOD)

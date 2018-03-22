@@ -49,6 +49,10 @@ public class SingleCar {
 	
 	private Wheel default_wheel;
 	
+	public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
+	public final AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
+	public final AtomicInteger counter_BeforeUpdateConfiguration = new AtomicInteger();
+	
 	public enum WheelType {
 		tractor, formula1, suv, sedan, truck;
 	}
@@ -57,19 +61,18 @@ public class SingleCar {
 		public int size;
 		public WheelType type;
 		
+		public final AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
+		public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
+		
 		@OnBeforeRemovedInConfiguration
 		private void callbackOnBeforeRemovedInConfiguration() {
 			counter_BeforeRemovedInConfiguration.getAndIncrement();
 		}
 		
-		public final AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
-		
-		@OnAfterUpdateConfiguration
-		private void callbackOnAfterUpdateConfiguration() {
-			counter_AfterUpdateConfiguration.getAndIncrement();
+		@OnAfterInjectConfiguration
+		private void callbackOnAfterInjectConfiguration() {
+			counter_AfterInjectConfiguration.getAndIncrement();
 		}
-		
-		public final AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
 		
 		@Override
 		public int hashCode() {
@@ -136,10 +139,6 @@ public class SingleCar {
 	public Wheel getDefault_wheel() {
 		return default_wheel;
 	}
-	
-	public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
-	public final AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
-	public final AtomicInteger counter_BeforeUpdateConfiguration = new AtomicInteger();
 	
 	@OnAfterInjectConfiguration
 	private void callbackOnAfterInjectConfiguration() {

@@ -24,6 +24,8 @@ import java.lang.annotation.Target;
 
 /**
  * Only triggered after the first Configuration set, just before next configuration updates
+ * Reconfiguration callbacks is not triggered with JsonArray items.
+ * Visible for public, protected, package and private class methods, and public only inherited methods.
  */
 @Retention(RUNTIME)
 @Target(METHOD)

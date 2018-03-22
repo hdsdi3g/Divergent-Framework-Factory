@@ -22,6 +22,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+/**
+ * Visible for public, protected, package and private class methods, and public only inherited methods.
+ * Callback is not propaged for deleted object's local variables (not either sub-variables), only triggred for in this class instance.
+ */
 @Retention(RUNTIME)
 @Target(METHOD)
 public @interface OnBeforeRemovedInConfiguration {
