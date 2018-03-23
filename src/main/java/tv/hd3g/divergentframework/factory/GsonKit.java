@@ -505,7 +505,7 @@ public class GsonKit {
 					} else if (current_content_for_key.isJsonObject()) {
 						onAddNewerToCurrent.accept(key, newer_content_for_key);
 					} else if (current_content_for_key.isJsonNull()) {
-						onRemoveInCurrent.accept(key, current.get(key));
+						onAddNewerToCurrent.accept(key, newer_content_for_key);
 					} else if (current_content_for_key.isJsonPrimitive()) {
 						onAddNewerToCurrent.accept(key, newer_content_for_key);
 					}
@@ -515,12 +515,12 @@ public class GsonKit {
 					} else if (current_content_for_key.isJsonObject()) {
 						compareSubObjects.accept(current_content_for_key.getAsJsonObject(), newer_content_for_key.getAsJsonObject());
 					} else if (current_content_for_key.isJsonNull()) {
-						onRemoveInCurrent.accept(key, current.get(key));
+						onAddNewerToCurrent.accept(key, newer_content_for_key);
 					} else if (current_content_for_key.isJsonPrimitive()) {
 						onAddNewerToCurrent.accept(key, newer_content_for_key);
 					}
 				} else if (newer_content_for_key.isJsonNull()) {
-					onRemoveInCurrent.accept(key, current.get(key));
+					onAddNewerToCurrent.accept(key, newer_content_for_key);
 				} else if (newer_content_for_key.isJsonPrimitive()) {
 					onAddNewerToCurrent.accept(key, newer_content_for_key);
 				}

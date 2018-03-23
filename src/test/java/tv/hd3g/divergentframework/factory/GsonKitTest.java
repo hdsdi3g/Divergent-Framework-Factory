@@ -84,4 +84,6 @@ public class GsonKitTest extends TestCase {
 		assertEquals("d4", current.get("v1").getAsJsonArray().get(0).getAsString());
 	}
 	
+	// TODO test null behaviors: null value in a map key should do a remove branch action and trigger an remove callback
+	
 }

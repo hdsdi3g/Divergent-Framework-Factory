@@ -42,6 +42,7 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -97,7 +98,8 @@ enum ConfigurationFileType {
 			}
 			
 			Yaml y = new Yaml(new SafeConstructor());
-			Gson g = new Gson();
+			
+			Gson g = new GsonBuilder().serializeNulls().create();
 			
 			JsonObject current_tree = new JsonObject();
 			

@@ -68,6 +68,13 @@ class ClassConfigurator {
 		class_definitions = new ConcurrentHashMap<>();
 	}
 	
+	/**
+	 * Update behavior during push a new json configuration.
+	 */
+	private enum MissingKeyBehavior {
+		REMOVE, IGNORE;
+	}
+	
 	class ClassDefinition {
 		
 		private final Class<?> target_class;
@@ -141,7 +148,7 @@ class ClassConfigurator {
 		 * Only update instance fields declared in configuration_tree.
 		 * Don't callback class annotations.
 		 */
-		public ClassDefinition setObjectConfiguration(Object instance, JsonObject configuration_tree) {
+		public ClassDefinition setObjectConfiguration(Object instance, JsonObject configuration_tree, MissingKeyBehavior update_policy) {
 			if (target_class.isInstance(instance) == false) {
 				throw new ClassCastException("Invalid class type between " + target_class + " and object instance " + instance.getClass());
 			}
@@ -160,8 +167,11 @@ class ClassConfigurator {
 					throw new IllegalArgumentException("Validation error for var name " + field_name + " in " + target_class.getSimpleName() + " configured with " + field_conf.toString());
 				}
 				
+				if (log.isTraceEnabled()) {
+					log.trace("Push conf for a " + target_class + " class, MissingKeyBehavior: " + target_class + ", with " + configuration_tree);
+				}
 				try {
-					f_def.setValue(instance, field_conf);
+					f_def.setValue(instance, field_conf, update_policy);
 				} catch (JsonSyntaxException | IllegalAccessException e) {
 					throw new RuntimeException("Can't configure " + f_def.field.getName() + " in " + target_class.getSimpleName() + " configured with " + field_conf.toString(), e);
 				}
@@ -241,7 +251,7 @@ class ClassConfigurator {
 			}
 			
 			@SuppressWarnings("unchecked")
-			private void setValue(Object main_object_instance, JsonElement value) throws JsonSyntaxException, IllegalArgumentException, IllegalAccessException {
+			private void setValue(Object main_object_instance, JsonElement value, MissingKeyBehavior missing_key_behavior) throws JsonSyntaxException, IllegalArgumentException, IllegalAccessException {
 				Object current_value = field.get(main_object_instance);
 				
 				if (target_generic_class_type != null) {
@@ -343,23 +353,33 @@ class ClassConfigurator {
 						} else if (value.isJsonObject()) {
 							JsonObject jo_value = value.getAsJsonObject();
 							
-							current_map.keySet().removeIf(key -> {
-								if (jo_value.has((String) key) == false) {
-									callbackUpdateAPIForRemovedObject(target_generic_class_type, current_map.get(key));
-									return true;
-								}
-								return false;
-							});
+							if (missing_key_behavior == MissingKeyBehavior.REMOVE) {
+								current_map.keySet().removeIf(key -> {
+									if (jo_value.has((String) key) == false) {
+										callbackUpdateAPIForRemovedObject(target_generic_class_type, current_map.get(key));
+										return true;
+									}
+									return false;
+								});
+							}
 							
 							jo_value.entrySet().forEach(entry -> {
 								JsonElement sub_item = entry.getValue();
 								if (current_map.containsKey(entry.getKey())) {
 									if (sub_item.isJsonObject()) {
-										reconfigureActualObjectWithJson(target_generic_class_type, current_map.get(entry.getKey()), sub_item.getAsJsonObject());
+										if (sub_item.getAsJsonObject().size() == 0) {
+											/**
+											 * No sub items, no update.
+											 */
+										} else {
+											reconfigureActualObjectWithJson(target_generic_class_type, current_map.get(entry.getKey()), sub_item.getAsJsonObject());
+										}
 									} else if (sub_item.isJsonNull()) {
 										/**
-										 * Don't put null item in map.
+										 * Don't put null item in map, but remove it.
 										 */
+										callbackUpdateAPIForRemovedObject(target_generic_class_type, current_map.get(entry.getKey()));
+										current_map.remove(entry.getKey());
 									} else if (sub_item.isJsonPrimitive() | sub_item.isJsonArray()) {
 										current_map.put(entry.getKey(), gson_kit.getGson().fromJson(sub_item, target_generic_class_type));
 									}
@@ -470,7 +490,7 @@ class ClassConfigurator {
 			return;
 		}
 		log.debug("Configure " + from_type + " with " + configuration);
-		getFrom(from_type).setObjectConfiguration(new_created_instance, configuration).callbackOnAfterInjectConfiguration(new_created_instance);
+		getFrom(from_type).setObjectConfiguration(new_created_instance, configuration, MissingKeyBehavior.REMOVE).callbackOnAfterInjectConfiguration(new_created_instance);
 	}
 	
 	/**
@@ -485,7 +505,7 @@ class ClassConfigurator {
 		}
 		
 		log.debug("Reconfigure " + from_type + " with " + new_configuration);
-		getFrom(from_type).callbackOnBeforeUpdateConfiguration(instance_to_update).setObjectConfiguration(instance_to_update, new_configuration).callbackOnAfterUpdateConfiguration(instance_to_update);
+		getFrom(from_type).callbackOnBeforeUpdateConfiguration(instance_to_update).setObjectConfiguration(instance_to_update, new_configuration, MissingKeyBehavior.IGNORE).callbackOnAfterUpdateConfiguration(instance_to_update);
 	}
 	
 }
