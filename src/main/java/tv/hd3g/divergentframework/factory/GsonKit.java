@@ -520,7 +520,7 @@ public class GsonKit {
 						onAddNewerToCurrent.accept(key, newer_content_for_key);
 					}
 				} else if (newer_content_for_key.isJsonNull()) {
-					onAddNewerToCurrent.accept(key, newer_content_for_key);
+					onRemoveInCurrent.accept(key, newer_content_for_key);
 				} else if (newer_content_for_key.isJsonPrimitive()) {
 					onAddNewerToCurrent.accept(key, newer_content_for_key);
 				}
@@ -544,10 +544,15 @@ public class GsonKit {
 		}
 	}
 	
+	public enum KeyValueNullContentMergueBehavior {
+		KEEP, REMOVE;
+	}
+	
 	/**
 	 * Update current with newer
+	 * @param null_behavior use REMOVE for remove all Nulls presence.
 	 */
-	public static final void jsonMergue(JsonElement current, JsonElement newer) {
+	public static final void jsonMergue(JsonElement current, JsonElement newer, KeyValueNullContentMergueBehavior null_behavior) {
 		if (current == null) {
 			throw new NullPointerException("\"current\" can't to be null");
 		}
@@ -566,13 +571,23 @@ public class GsonKit {
 			JsonObject jo_current = current.getAsJsonObject();
 			
 			jsonCompare(jo_current, newer, (k_to_add, v) -> {
-				jo_current.add(k_to_add, v);
+				if (v.isJsonNull()) {
+					if (null_behavior == KeyValueNullContentMergueBehavior.KEEP) {
+						jo_current.add(k_to_add, v);
+					}
+				} else {
+					jo_current.add(k_to_add, v);
+				}
 			}, (k_to_remove, v) -> {
-				jo_current.remove(k_to_remove);
+				if (null_behavior == KeyValueNullContentMergueBehavior.KEEP) {
+					jo_current.add(k_to_remove, v);
+				} else if (null_behavior == KeyValueNullContentMergueBehavior.REMOVE) {
+					jo_current.remove(k_to_remove);
+				}
 			}, (sub_current, sub_newer) -> {
-				jsonMergue(sub_current, sub_newer);
+				jsonMergue(sub_current, sub_newer, null_behavior);
 			}, (sub_current, sub_newer) -> {
-				jsonMergue(sub_current, sub_newer);
+				jsonMergue(sub_current, sub_newer, null_behavior);
 			});
 			
 		} else if (current.isJsonPrimitive()) {

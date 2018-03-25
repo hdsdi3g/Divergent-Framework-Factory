@@ -46,6 +46,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergueBehavior;
+
 enum ConfigurationFileType {
 	
 	/**
@@ -104,7 +106,7 @@ enum ConfigurationFileType {
 			JsonObject current_tree = new JsonObject();
 			
 			for (Object data : y.loadAll(String.join("\r\n", file_lines))) {
-				GsonKit.jsonMergue(current_tree, g.toJsonTree(data));
+				GsonKit.jsonMergue(current_tree, g.toJsonTree(data), KeyValueNullContentMergueBehavior.KEEP);
 			}
 			
 			for (Map.Entry<String, JsonElement> entry : current_tree.entrySet()) {

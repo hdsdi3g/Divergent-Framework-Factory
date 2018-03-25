@@ -35,6 +35,8 @@ import org.apache.log4j.Logger;
 
 import com.google.gson.JsonObject;
 
+import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergueBehavior;
+
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
@@ -240,35 +242,6 @@ public class ConfigurationUtility {
 		return this;
 	}
 	
-	/*private class InternalConfiguredClassEntry<T> extends ConfiguredClassEntry<T> {
-		
-		InternalConfiguredClassEntry(Gson gson, Class<T> target_class, JsonObject new_class_configuration) {
-			super(gson, target_class, new_class_configuration);
-		}
-		
-		protected Object instanceNewObjectFromClass(Class<?> from_type) throws ReflectiveOperationException {
-			return factory.create(from_type);
-		}
-		
-		@Override
-		protected void configureNewObjectWithJson(Class<?> from_type, Object new_created_instance, JsonElement configuration) {
-			// TODO Auto-generated method stub
-		}
-		
-		@Override
-		protected void reconfigureActualObjectWithJson(Class<?> from_type, Object instance_to_update, JsonObject new_configuration) {
-			// TODO Auto-generated method stub
-			
-		}
-		
-		@Override
-		protected void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback) {
-			// TODO Auto-generated method stub
-			
-		}
-		
-	}*/
-	
 	public ConfigurationUtility injectConfiguration() {
 		synchronized (configuration_files) {
 			LinkedHashMap<ConfiguredClassEntry<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
@@ -284,7 +257,7 @@ public class ConfigurationUtility {
 							if (configured_types.containsKey(set_updated_class_name)) {
 								ConfiguredClassEntry<?> current_class_entry = configured_types.get(set_updated_class_name);
 								if (class_conf_to_update.containsKey(current_class_entry)) {
-									GsonKit.jsonMergue(class_conf_to_update.get(current_class_entry), new_config_for_class);
+									GsonKit.jsonMergue(class_conf_to_update.get(current_class_entry), new_config_for_class, KeyValueNullContentMergueBehavior.KEEP);
 								} else {
 									class_conf_to_update.put(current_class_entry, new_config_for_class);
 								}
