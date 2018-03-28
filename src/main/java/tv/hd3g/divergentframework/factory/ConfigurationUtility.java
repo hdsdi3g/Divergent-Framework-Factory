@@ -35,7 +35,7 @@ import org.apache.log4j.Logger;
 
 import com.google.gson.JsonObject;
 
-import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergueBehavior;
+import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergeBehavior;
 
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
@@ -255,14 +255,14 @@ public class ConfigurationUtility {
 							JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
 							
 							if (configured_types.containsKey(set_updated_class_name)) {
-								ConfiguredClassEntry<?> current_class_entry = configured_types.get(set_updated_class_name);
+								ConfiguredClass current_class_entry = configured_types.get(set_updated_class_name);
 								if (class_conf_to_update.containsKey(current_class_entry)) {
-									GsonKit.jsonMergue(class_conf_to_update.get(current_class_entry), new_config_for_class, KeyValueNullContentMergueBehavior.KEEP);
+									GsonKit.jsonMerge(class_conf_to_update.get(current_class_entry), new_config_for_class, KeyValueNullContentMergeBehavior.KEEP);
 								} else {
 									class_conf_to_update.put(current_class_entry, new_config_for_class);
 								}
 							} else {
-								configured_types.put(set_updated_class_name, null);// TODO new InternalConfiguredClassEntry<>(gson_kit.getGson(), set_updated_class_name, new_config_for_class));
+								configured_types.put(set_updated_class_name, new ConfiguredClass(class_configurator, gson_kit.getGson(), set_updated_class_name, new_config_for_class));
 							}
 						});
 					} catch (IOException e) {

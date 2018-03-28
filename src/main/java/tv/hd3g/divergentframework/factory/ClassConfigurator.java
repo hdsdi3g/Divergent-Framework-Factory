@@ -330,7 +330,7 @@ class ClassConfigurator {
 						} else if (value.isJsonNull()) {
 							field.set(main_object_instance, null);
 						} else if (value.isJsonObject()) {
-							throw new JsonSyntaxException("Can't mergue list with a json Object for " + toString());
+							throw new JsonSyntaxException("Can't merge list with a json Object for " + toString());
 						}
 						return;
 					} else if (type.isAssignableFrom(LinkedHashMap.class)) {
@@ -345,9 +345,9 @@ class ClassConfigurator {
 						}
 						
 						if (value.isJsonArray()) {
-							throw new JsonSyntaxException("Can't mergue map with a json Array for " + toString());
+							throw new JsonSyntaxException("Can't merge map with a json Array for " + toString());
 						} else if (value.isJsonPrimitive()) {
-							throw new JsonSyntaxException("Can't mergue map with a json Primitive for " + toString());
+							throw new JsonSyntaxException("Can't merge map with a json Primitive for " + toString());
 						} else if (value.isJsonNull()) {
 							field.set(main_object_instance, null);
 						} else if (value.isJsonObject()) {

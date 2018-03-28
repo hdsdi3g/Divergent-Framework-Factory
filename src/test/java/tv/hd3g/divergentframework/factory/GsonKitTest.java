@@ -23,11 +23,11 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 
 import junit.framework.TestCase;
-import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergueBehavior;
+import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergeBehavior;
 
 public class GsonKitTest extends TestCase {
 	
-	public void testJsonMergue() {
+	public void testjsonMerge() {
 		JsonObject current = new JsonObject();
 		current.addProperty("v1", "a");
 		current.addProperty("v2", "b");
@@ -36,7 +36,7 @@ public class GsonKitTest extends TestCase {
 		newer.addProperty("v2", "B");
 		newer.addProperty("v3", "C");
 		
-		GsonKit.jsonMergue(current, newer, KeyValueNullContentMergueBehavior.KEEP);
+		GsonKit.jsonMerge(current, newer, KeyValueNullContentMergeBehavior.KEEP);
 		
 		assertTrue(current.has("v1"));
 		assertTrue(current.has("v2"));
@@ -53,7 +53,7 @@ public class GsonKitTest extends TestCase {
 		newer = new JsonObject();
 		newer.add("v4", sub);
 		
-		GsonKit.jsonMergue(current, newer, KeyValueNullContentMergueBehavior.KEEP);
+		GsonKit.jsonMerge(current, newer, KeyValueNullContentMergeBehavior.KEEP);
 		
 		assertTrue(current.has("v1"));
 		assertTrue(current.has("v2"));
@@ -73,7 +73,7 @@ public class GsonKitTest extends TestCase {
 		newer = new JsonObject();
 		newer.add("v1", sub);
 		
-		GsonKit.jsonMergue(current, newer, KeyValueNullContentMergueBehavior.KEEP);
+		GsonKit.jsonMerge(current, newer, KeyValueNullContentMergeBehavior.KEEP);
 		
 		assertTrue(current.has("v1"));
 		assertTrue(current.has("v2"));
@@ -97,7 +97,7 @@ public class GsonKitTest extends TestCase {
 		newer.add("v2", JsonNull.INSTANCE);
 		newer.addProperty("v3", "C");
 		
-		GsonKit.jsonMergue(current, newer, KeyValueNullContentMergueBehavior.KEEP);
+		GsonKit.jsonMerge(current, newer, KeyValueNullContentMergeBehavior.KEEP);
 		
 		assertEquals(3, current.size());
 		
@@ -119,7 +119,7 @@ public class GsonKitTest extends TestCase {
 		newer.add("v2", JsonNull.INSTANCE);
 		newer.addProperty("v3", "C");
 		
-		GsonKit.jsonMergue(current, newer, KeyValueNullContentMergueBehavior.REMOVE);
+		GsonKit.jsonMerge(current, newer, KeyValueNullContentMergeBehavior.REMOVE);
 		
 		assertEquals(2, current.size());
 		
@@ -142,7 +142,7 @@ public class GsonKitTest extends TestCase {
 		newer.add(JsonNull.INSTANCE);
 		newer.add("C");
 		
-		GsonKit.jsonMergue(current, newer, KeyValueNullContentMergueBehavior.KEEP);
+		GsonKit.jsonMerge(current, newer, KeyValueNullContentMergeBehavior.KEEP);
 		
 		assertEquals(3, current.size());
 		
