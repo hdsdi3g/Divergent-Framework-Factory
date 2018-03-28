@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,8 +46,9 @@ public class ConfigurationUtility {
 	private final Factory factory;
 	private final GsonKit gson_kit;
 	private final HashMap<String, Class<?>> class_mnemonics;
+	private final ClassConfigurator class_configurator;
 	
-	private final HashMap<Class<?>, ConfiguredClassEntry<?>> configured_types;// TODO4 change to sync hash map ?
+	private final ConcurrentHashMap<Class<?>, ConfiguredClass> configured_types;
 	private final ArrayList<ConfigurationFile> configuration_files;
 	private final ArrayList<File> watched_configuration_files_and_dirs;
 	
@@ -57,8 +59,15 @@ public class ConfigurationUtility {
 		}
 		class_mnemonics = new HashMap<>();
 		gson_kit = factory.createGsonKit();
+		class_configurator = new ClassConfigurator(gson_kit, c -> {
+			try {
+				return factory.create(c);
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException("Can't instance class " + c, e);
+			}
+		});
 		
-		configured_types = new HashMap<>();
+		configured_types = new ConcurrentHashMap<>();
 		configuration_files = new ArrayList<>();
 		watched_configuration_files_and_dirs = new ArrayList<>();
 	}
@@ -244,7 +253,7 @@ public class ConfigurationUtility {
 	
 	public ConfigurationUtility injectConfiguration() {
 		synchronized (configuration_files) {
-			LinkedHashMap<ConfiguredClassEntry<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
+			LinkedHashMap<ConfiguredClass, JsonObject> class_conf_to_update = new LinkedHashMap<>();
 			
 			synchronized (configured_types) {
 				configuration_files.stream().filter(c_file -> {
@@ -289,27 +298,21 @@ public class ConfigurationUtility {
 			 * Update all current configured classes
 			 */
 			if (class_conf_to_update.isEmpty() == false) {
-				List<String> all_class_names = class_conf_to_update.keySet().stream().map(c_e -> {
-					return c_e.getTargetClass().getName();
-				}).collect(Collectors.toList());
+				if (log.isTraceEnabled()) {
+					log.trace("Update previously configured classes " + class_conf_to_update);
+				} else if (log.isDebugEnabled()) {
+					log.debug("Update previously configured classes " + class_conf_to_update.keySet());
+				}
 				
-				log.info("Update previously configured classes " + all_class_names);
-				
-				class_conf_to_update.keySet().forEach(c_e -> {
-					c_e.beforeUpdateInstances();
-				});
 				class_conf_to_update.forEach((c_e, new_class_configuration) -> {
 					if (log.isDebugEnabled()) {
 						if (log.isTraceEnabled()) {
-							log.trace("Update all configured instances for " + c_e.getTargetClass() + " with conf " + new_class_configuration);
+							log.trace("Update all configured instances for " + c_e + " with conf " + new_class_configuration);
 						} else {
-							log.debug("Update all configured instances for " + c_e.getTargetClass());
+							log.debug("Update all configured instances for " + c_e);
 						}
 					}
 					c_e.updateInstances(new_class_configuration);
-				});
-				class_conf_to_update.keySet().forEach(c_e -> {
-					c_e.afterUpdateInstances();
 				});
 			}
 		}
@@ -402,8 +405,7 @@ public class ConfigurationUtility {
 			return;
 		}
 		
-		@SuppressWarnings("unchecked")
-		ConfiguredClassEntry<T> c_e = (ConfiguredClassEntry<T>) configured_types.get(target_class);
+		ConfiguredClass c_e = configured_types.get(target_class);
 		c_e.setupInstance(instance_to_configure);
 	}
 	

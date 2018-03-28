@@ -19,5 +19,5 @@ package tv.hd3g.divergentframework.factory;
 import junit.framework.TestCase;
 
 public class ConfigurationUtilityTest extends TestCase {
-	
+	// TODO2 make tests
 }

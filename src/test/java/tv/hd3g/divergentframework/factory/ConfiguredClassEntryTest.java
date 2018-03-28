@@ -20,6 +20,6 @@ import junit.framework.TestCase;
 
 public class ConfiguredClassEntryTest extends TestCase {
 	
-	// TODO2 make tests
+	// TODO make tests
 	
 }

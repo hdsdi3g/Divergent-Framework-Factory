@@ -448,103 +448,107 @@ public class GsonKit {
 	/**
 	 * Don't touch current, but It can be updated via events.
 	 */
-	public static final void jsonCompare(JsonArray current, JsonElement newer, Consumer<JsonElement> onAddNewerToCurrent, BiConsumer<Integer, JsonElement> onRemoveInCurrent) {
-		if (newer.isJsonArray()) {
-			/**
-			 * Replace all by newer content
-			 */
-			for (int pos = current.size() - 1; pos >= 0; pos--) {
-				onRemoveInCurrent.accept(pos, current.get(pos));
-			}
-			
-			newer.getAsJsonArray().forEach(new_item -> {
-				onAddNewerToCurrent.accept(new_item);
-			});
-			
-		} else if (newer.isJsonObject()) {
-			throw new RuntimeException("Can't inject a JsonObject in place of a JsonArray");
-		} else if (newer.isJsonPrimitive()) {
-			/**
-			 * Replace all, and add newer item
-			 */
-			for (int pos = current.size() - 1; pos >= 0; pos--) {
-				onRemoveInCurrent.accept(pos, current.get(pos));
-			}
-			onAddNewerToCurrent.accept(newer);
-		} else if (newer.isJsonNull()) {
-			/**
-			 * Remove all
-			 */
-			for (int pos = current.size() - 1; pos >= 0; pos--) {
-				onRemoveInCurrent.accept(pos, current.get(pos));
-			}
-		}
-	}
-	
-	/**
-	 * Don't touch current, but It can be updated via events.
-	 */
-	public static final void jsonCompare(JsonObject current, JsonElement newer, BiConsumer<String, JsonElement> onAddNewerToCurrent, BiConsumer<String, JsonElement> onRemoveInCurrent, BiConsumer<JsonObject, JsonObject> compareSubObjects, BiConsumer<JsonArray, JsonArray> compareSubArrays) {
-		if (newer.isJsonArray()) {
-			throw new RuntimeException("Can't inject a JsonArray in place of a JsonObject");
-		} else if (newer.isJsonObject()) {
-			JsonObject jo_newer = newer.getAsJsonObject();
-			List<String> current_items = current.keySet().stream().collect(Collectors.toList());
-			
-			current_items.stream().filter(key -> jo_newer.has(key)).forEach(key -> {
-				JsonElement current_content_for_key = current.get(key);
-				JsonElement newer_content_for_key = jo_newer.get(key);
+	public static final void jsonCompare(JsonElement original, JsonElement newer, BiConsumer<String, JsonElement> onAddNewerToCurrentMap, BiConsumer<String, JsonElement> onRemoveInCurrentMap, Consumer<JsonElement> onAddNewerToCurrentList, BiConsumer<Integer, JsonElement> onRemoveInCurrentList) {
+		if (original.isJsonNull()) {
+			throw new RuntimeException("Can't compare something with a JsonNull");
+		} else if (original.isJsonPrimitive()) {
+			throw new RuntimeException("Can't compare a JsonPrimitive with something");
+		} else if (original.isJsonObject()) {
+			JsonObject jo_current = original.getAsJsonObject();
+			if (newer.isJsonArray()) {
+				throw new RuntimeException("Can't inject a JsonArray in place of a JsonObject");
+			} else if (newer.isJsonObject()) {
+				JsonObject jo_newer = newer.getAsJsonObject();
+				List<String> current_items = jo_current.keySet().stream().collect(Collectors.toList());
 				
-				if (newer_content_for_key == null) {
-					/**
-					 * Current will not change.
-					 */
-				} else if (newer_content_for_key.isJsonArray()) {
-					if (current_content_for_key.isJsonArray()) {
-						compareSubArrays.accept(current_content_for_key.getAsJsonArray(), newer_content_for_key.getAsJsonArray());
-					} else if (current_content_for_key.isJsonObject()) {
-						onAddNewerToCurrent.accept(key, newer_content_for_key);
-					} else if (current_content_for_key.isJsonNull()) {
-						onAddNewerToCurrent.accept(key, newer_content_for_key);
-					} else if (current_content_for_key.isJsonPrimitive()) {
-						onAddNewerToCurrent.accept(key, newer_content_for_key);
+				current_items.stream().filter(key -> jo_newer.has(key)).forEach(key -> {
+					JsonElement current_content_for_key = jo_current.get(key);
+					JsonElement newer_content_for_key = jo_newer.get(key);
+					
+					if (newer_content_for_key == null) {
+						/**
+						 * Current will not change.
+						 */
+					} else if (newer_content_for_key.isJsonArray()) {
+						if (current_content_for_key.isJsonArray()) {
+							jsonCompare(current_content_for_key, newer_content_for_key, onAddNewerToCurrentMap, onRemoveInCurrentMap, onAddNewerToCurrentList, onRemoveInCurrentList);
+						} else if (current_content_for_key.isJsonObject()) {
+							onAddNewerToCurrentMap.accept(key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonNull()) {
+							onAddNewerToCurrentMap.accept(key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonPrimitive()) {
+							onAddNewerToCurrentMap.accept(key, newer_content_for_key);
+						}
+					} else if (newer_content_for_key.isJsonObject()) {
+						if (current_content_for_key.isJsonArray()) {
+							onAddNewerToCurrentMap.accept(key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonObject()) {
+							jsonCompare(current_content_for_key, newer_content_for_key, onAddNewerToCurrentMap, onRemoveInCurrentMap, onAddNewerToCurrentList, onRemoveInCurrentList);
+						} else if (current_content_for_key.isJsonNull()) {
+							onAddNewerToCurrentMap.accept(key, newer_content_for_key);
+						} else if (current_content_for_key.isJsonPrimitive()) {
+							onAddNewerToCurrentMap.accept(key, newer_content_for_key);
+						}
+					} else if (newer_content_for_key.isJsonNull()) {
+						onRemoveInCurrentMap.accept(key, newer_content_for_key);
+					} else if (newer_content_for_key.isJsonPrimitive()) {
+						onAddNewerToCurrentMap.accept(key, newer_content_for_key);
 					}
-				} else if (newer_content_for_key.isJsonObject()) {
-					if (current_content_for_key.isJsonArray()) {
-						onAddNewerToCurrent.accept(key, newer_content_for_key);
-					} else if (current_content_for_key.isJsonObject()) {
-						compareSubObjects.accept(current_content_for_key.getAsJsonObject(), newer_content_for_key.getAsJsonObject());
-					} else if (current_content_for_key.isJsonNull()) {
-						onAddNewerToCurrent.accept(key, newer_content_for_key);
-					} else if (current_content_for_key.isJsonPrimitive()) {
-						onAddNewerToCurrent.accept(key, newer_content_for_key);
-					}
-				} else if (newer_content_for_key.isJsonNull()) {
-					onRemoveInCurrent.accept(key, newer_content_for_key);
-				} else if (newer_content_for_key.isJsonPrimitive()) {
-					onAddNewerToCurrent.accept(key, newer_content_for_key);
+				});
+				
+				List<String> newer_items = jo_newer.keySet().stream().collect(Collectors.toList());
+				newer_items.stream().filter(key -> jo_current.has(key) == false).forEach(key -> {
+					onAddNewerToCurrentMap.accept(key, jo_newer.get(key));
+				});
+			} else if (newer.isJsonPrimitive()) {
+				throw new RuntimeException("Can't inject a JsonPrimitive in place of a JsonObject");
+			} else if (newer.isJsonNull()) {
+				/**
+				 * Remove all
+				 */
+				List<String> current_items = jo_current.keySet().stream().collect(Collectors.toList());
+				
+				current_items.forEach(key -> {
+					onRemoveInCurrentMap.accept(key, jo_current.get(key));
+				});
+			}
+		} else if (original.isJsonArray()) {
+			JsonArray ja_current = original.getAsJsonArray();
+			
+			if (newer.isJsonArray()) {
+				/**
+				 * Replace all by newer content
+				 */
+				for (int pos = ja_current.size() - 1; pos >= 0; pos--) {
+					onRemoveInCurrentList.accept(pos, ja_current.get(pos));
 				}
-			});
-			
-			List<String> newer_items = jo_newer.keySet().stream().collect(Collectors.toList());
-			newer_items.stream().filter(key -> current.has(key) == false).forEach(key -> {
-				onAddNewerToCurrent.accept(key, jo_newer.get(key));
-			});
-		} else if (newer.isJsonPrimitive()) {
-			throw new RuntimeException("Can't inject a JsonPrimitive in place of a JsonObject");
-		} else if (newer.isJsonNull()) {
-			/**
-			 * Remove all
-			 */
-			List<String> current_items = current.keySet().stream().collect(Collectors.toList());
-			
-			current_items.forEach(key -> {
-				onRemoveInCurrent.accept(key, current.get(key));
-			});
+				
+				newer.getAsJsonArray().forEach(new_item -> {
+					onAddNewerToCurrentList.accept(new_item);
+				});
+				
+			} else if (newer.isJsonObject()) {
+				throw new RuntimeException("Can't inject a JsonObject in place of a JsonArray");
+			} else if (newer.isJsonPrimitive()) {
+				/**
+				 * Replace all, and add newer item
+				 */
+				for (int pos = ja_current.size() - 1; pos >= 0; pos--) {
+					onRemoveInCurrentList.accept(pos, ja_current.get(pos));
+				}
+				onAddNewerToCurrentList.accept(newer);
+			} else if (newer.isJsonNull()) {
+				/**
+				 * Remove all
+				 */
+				for (int pos = ja_current.size() - 1; pos >= 0; pos--) {
+					onRemoveInCurrentList.accept(pos, ja_current.get(pos));
+				}
+			}
 		}
 	}
 	
-	public enum KeyValueNullContentMergueBehavior {
+	public enum KeyValueNullContentMergeBehavior {
 		KEEP, REMOVE;
 	}
 	
@@ -552,7 +556,7 @@ public class GsonKit {
 	 * Update current with newer
 	 * @param null_behavior use REMOVE for remove all Nulls presence.
 	 */
-	public static final void jsonMergue(JsonElement current, JsonElement newer, KeyValueNullContentMergueBehavior null_behavior) {
+	public static final void jsonMerge(JsonElement current, JsonElement newer, KeyValueNullContentMergeBehavior null_behavior) {
 		if (current == null) {
 			throw new NullPointerException("\"current\" can't to be null");
 		}
@@ -560,36 +564,26 @@ public class GsonKit {
 			throw new NullPointerException("\"newer\" can't to be null");
 		}
 		
-		if (current.isJsonArray()) {
-			JsonArray ja_current = current.getAsJsonArray();
-			jsonCompare(current.getAsJsonArray(), newer, content_to_add -> {
-				ja_current.add(content_to_add);
-			}, (pos, content_to_remove) -> {
-				ja_current.remove(pos);
-			});
-		} else if (current.isJsonObject()) {
-			JsonObject jo_current = current.getAsJsonObject();
-			
-			jsonCompare(jo_current, newer, (k_to_add, v) -> {
+		if (current.isJsonArray() | current.isJsonObject()) {
+			jsonCompare(current, newer, (k_to_add, v) -> {
 				if (v.isJsonNull()) {
-					if (null_behavior == KeyValueNullContentMergueBehavior.KEEP) {
-						jo_current.add(k_to_add, v);
+					if (null_behavior == KeyValueNullContentMergeBehavior.KEEP) {
+						current.getAsJsonObject().add(k_to_add, v);
 					}
 				} else {
-					jo_current.add(k_to_add, v);
+					current.getAsJsonObject().add(k_to_add, v);
 				}
 			}, (k_to_remove, v) -> {
-				if (null_behavior == KeyValueNullContentMergueBehavior.KEEP) {
-					jo_current.add(k_to_remove, v);
-				} else if (null_behavior == KeyValueNullContentMergueBehavior.REMOVE) {
-					jo_current.remove(k_to_remove);
+				if (null_behavior == KeyValueNullContentMergeBehavior.KEEP) {
+					current.getAsJsonObject().add(k_to_remove, v);
+				} else if (null_behavior == KeyValueNullContentMergeBehavior.REMOVE) {
+					current.getAsJsonObject().remove(k_to_remove);
 				}
-			}, (sub_current, sub_newer) -> {
-				jsonMergue(sub_current, sub_newer, null_behavior);
-			}, (sub_current, sub_newer) -> {
-				jsonMergue(sub_current, sub_newer, null_behavior);
+			}, content_to_add -> {
+				current.getAsJsonArray().add(content_to_add);
+			}, (pos, content_to_remove) -> {
+				current.getAsJsonArray().remove(pos);
 			});
-			
 		} else if (current.isJsonPrimitive()) {
 			throw new RuntimeException("Can't compare Json primitives");
 		} else if (current.isJsonNull()) {
