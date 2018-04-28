@@ -16,6 +16,7 @@
 */
 package tv.hd3g.divergentframework.factory;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -271,6 +272,22 @@ public class GsonKit {
 			return Locale.forLanguageTag(json.getAsString());
 		});
 		
+		/**
+		 * Color
+		 */
+		registerGsonSimpleDeSerializer(Color.class, Color.class, src -> {
+			StringBuilder sb = new StringBuilder();
+			sb.append("RGBA:");
+			toHex(src.getRed(), sb);
+			toHex(src.getGreen(), sb);
+			toHex(src.getBlue(), sb);
+			toHex(src.getAlpha(), sb);
+			return new JsonPrimitive(sb.toString());
+		}, json -> {
+			String hex = json.getAsString().substring(5);
+			return new Color(fromHexMax1Byte(hex, 0), fromHexMax1Byte(hex, 2), fromHexMax1Byte(hex, 4), fromHexMax1Byte(hex, 6));
+		});
+		
 		/*
 		 * 	public class Serializer implements JsonSerializer<SelfSerializing> {
 		public JsonElement serialize(SelfSerializing src, Type typeOfSrc, JsonSerializationContext context) {
@@ -290,6 +307,23 @@ public class GsonKit {
 		*/
 		
 		rebuildGsonSimple();
+	}
+	
+	private static void toHex(int v, StringBuilder sb) {
+		if (v < 16) {
+			sb.append(0);
+		}
+		sb.append(Integer.toString(v, 16).toUpperCase());
+	}
+	
+	/**
+	 * @param s from 00 to FF
+	 */
+	private static final int fromHexMax1Byte(String s, int from) {
+		if (s == null) {
+			return 0;
+		}
+		return ((Character.digit(s.charAt(from), 16) << 4) + Character.digit(s.charAt(from + 1), 16));
 	}
 	
 	synchronized void rebuildGsonSimple() {
