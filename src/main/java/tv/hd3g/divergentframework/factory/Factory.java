@@ -130,8 +130,6 @@ public class Factory {
 	}
 	
 	public <T> T create(Class<T> from_class) throws ReflectiveOperationException {
-		// TODO4 get SingleInstance
-		
 		checkIsAccessibleClass(from_class, true);
 		
 		Constructor<?> constructor = class_constructor.computeIfAbsent(from_class, cl -> {
@@ -153,16 +151,8 @@ public class Factory {
 		@SuppressWarnings("unchecked")
 		T result = (T) constructor.newInstance();
 		
-		if (false) {
-			// TODO3 check if this *class* is configured >> ConfigurationUtility
-		}
-		
-		// TODO4 add to SingleInstance if needed
-		
 		return result;
 	}
-	
-	// TODO4 set ConfigurationUtility
 	
 	/**
 	 * @param onError can be null
@@ -289,5 +279,4 @@ public class Factory {
 		return g_kit;
 	}
 	
-	// TODO4 During the creation with Factory, if a field has a class type @SingleInstance, do a dynamic Injection & configure it, before current class conf.
 }

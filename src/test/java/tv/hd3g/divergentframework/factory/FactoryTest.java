@@ -39,7 +39,7 @@ public class FactoryTest extends TestCase {
 	
 	public void testFactoryWithConf() throws ReflectiveOperationException {
 		Factory f = new Factory();
-		// TODO2 push conf here, and test it
+		// push conf here, and test it
 		SingleCar sc = f.create(SingleCar.class);
 		
 		assertNull(sc.getColor());
@@ -48,6 +48,6 @@ public class FactoryTest extends TestCase {
 		assertNull(sc.getPoints_by_names());
 	}
 	
-	// TODO2 test callbacks (first, before next, after next)
+	// test callbacks (first, before next, after next)
 	
 }

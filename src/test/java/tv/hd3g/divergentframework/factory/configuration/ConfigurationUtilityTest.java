@@ -17,15 +17,14 @@
 package tv.hd3g.divergentframework.factory.configuration;
 
 import junit.framework.TestCase;
-import tv.hd3g.divergentframework.factory.Factory;
 
 public class ConfigurationUtilityTest extends TestCase {
 	
 	public void test() {
-		Factory factory = new Factory();
-		ConfigurationUtility conf_u = new ConfigurationUtility(factory);
+		// Factory factory = new Factory();
+		// ConfigurationUtility conf_u = new ConfigurationUtility(factory);
 		
-		/* TODO test ConfigurationUtility
+		/*  test ConfigurationUtility
 		conf_u.addConfigurationFiles(conf_file_or_dir);
 		conf_u.addNewClassInstanceToConfigure(instance_to_configure, target_class);
 		conf_u.injectConfiguration();
