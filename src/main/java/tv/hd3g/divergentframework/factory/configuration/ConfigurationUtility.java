@@ -14,7 +14,7 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.configuration;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -36,7 +36,10 @@ import org.apache.log4j.Logger;
 
 import com.google.gson.JsonObject;
 
+import tv.hd3g.divergentframework.factory.Factory;
+import tv.hd3g.divergentframework.factory.GsonKit;
 import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergeBehavior;
+import tv.hd3g.divergentframework.factory.Logtoolkit;
 
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
@@ -48,7 +51,7 @@ public class ConfigurationUtility {
 	private final HashMap<String, Class<?>> class_mnemonics;
 	private final ClassConfigurator class_configurator;
 	
-	private final ConcurrentHashMap<Class<?>, ConfiguredClass> configured_types;
+	private final ConcurrentHashMap<Class<?>, ConfiguredClass<?>> configured_types;
 	private final ArrayList<ConfigurationFile> configuration_files;
 	private final ArrayList<File> watched_configuration_files_and_dirs;
 	
@@ -253,7 +256,7 @@ public class ConfigurationUtility {
 	
 	public ConfigurationUtility injectConfiguration() {
 		synchronized (configuration_files) {
-			LinkedHashMap<ConfiguredClass, JsonObject> class_conf_to_update = new LinkedHashMap<>();
+			LinkedHashMap<ConfiguredClass<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
 			
 			synchronized (configured_types) {
 				configuration_files.stream().filter(c_file -> {
@@ -264,14 +267,14 @@ public class ConfigurationUtility {
 							JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
 							
 							if (configured_types.containsKey(set_updated_class_name)) {
-								ConfiguredClass current_class_entry = configured_types.get(set_updated_class_name);
+								ConfiguredClass<?> current_class_entry = configured_types.get(set_updated_class_name);
 								if (class_conf_to_update.containsKey(current_class_entry)) {
 									GsonKit.jsonMerge(class_conf_to_update.get(current_class_entry), new_config_for_class, KeyValueNullContentMergeBehavior.KEEP);
 								} else {
 									class_conf_to_update.put(current_class_entry, new_config_for_class);
 								}
 							} else {
-								configured_types.put(set_updated_class_name, new ConfiguredClass(class_configurator, gson_kit.getGson(), set_updated_class_name, new_config_for_class));
+								configured_types.put(set_updated_class_name, new ConfiguredClass<>(class_configurator, gson_kit.getGson(), set_updated_class_name, new_config_for_class));
 							}
 						});
 					} catch (IOException e) {
@@ -405,7 +408,8 @@ public class ConfigurationUtility {
 			return;
 		}
 		
-		ConfiguredClass c_e = configured_types.get(target_class);
+		@SuppressWarnings("unchecked")
+		ConfiguredClass<T> c_e = (ConfiguredClass<T>) configured_types.get(target_class);
 		c_e.setupInstance(instance_to_configure);
 	}
 	

@@ -14,7 +14,7 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.configuration;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -46,6 +46,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import tv.hd3g.divergentframework.factory.GsonKit;
 import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergeBehavior;
 
 enum ConfigurationFileType {

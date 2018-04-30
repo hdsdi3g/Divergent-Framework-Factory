@@ -1,5 +1,5 @@
 /*
- * This file is part of Divergent-Framework-Factory.
+ * This file is part of Divergent Framework Factory.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -14,10 +14,18 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.configuration.annotations;
 
-import junit.framework.TestCase;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-public class ConfigurationUtilityTest extends TestCase {
-	// TODO2 make tests
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+
+@Retention(RUNTIME)
+@Target(FIELD)
+public @interface ConfigurableValidators {
+	
+	ConfigurableValidator[] value();
+	
 }

@@ -1,5 +1,5 @@
 /*
- * This file is part of Divergent-Framework-Factory.
+ * This file is part of Divergent Framework Factory.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -14,12 +14,20 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.configuration.annotations;
 
-import junit.framework.TestCase;
+import static java.lang.annotation.ElementType.METHOD;
 
-public class ConfiguredClassEntryTest extends TestCase {
-	
-	// TODO make tests
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Only triggered one time.
+ * Visible for public, protected, package and private class methods, and public only inherited methods.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(METHOD)
+public @interface OnAfterInjectConfiguration {
 	
 }

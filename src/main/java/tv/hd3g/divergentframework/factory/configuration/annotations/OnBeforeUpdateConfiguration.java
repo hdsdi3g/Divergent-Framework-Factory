@@ -14,20 +14,21 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.validation;
+package tv.hd3g.divergentframework.factory.configuration.annotations;
 
-import java.util.function.Predicate;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import com.google.gson.JsonElement;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-public class NotNullValidator extends DefaultValidator {
+/**
+ * Only triggered after the first Configuration set, just before next configuration updates
+ * Reconfiguration callbacks is not triggered with JsonArray items.
+ * Visible for public, protected, package and private class methods, and public only inherited methods.
+ */
+@Retention(RUNTIME)
+@Target(METHOD)
+public @interface OnBeforeUpdateConfiguration {
 	
-	public Predicate<JsonElement> getValidator() {
-		return t -> {
-			if (t == null) {
-				return false;
-			}
-			return t.isJsonNull() == false;
-		};
-	}
 }

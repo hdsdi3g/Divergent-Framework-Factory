@@ -14,22 +14,19 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.validation;
+package tv.hd3g.divergentframework.factory;
 
-import java.util.function.Predicate;
+import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-import com.google.gson.JsonElement;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-public class DefaultValidator {
-	
-	/**
-	 * Get a validation predicate, with the raw source from Configuration
-	 * @return always true by default
-	 */
-	public Predicate<JsonElement> getValidator() {
-		return (o) -> {
-			return true;
-		};
-	}
+/**
+ * Reuse previousely created Object with Factory
+ */
+@Retention(RUNTIME)
+@Target(TYPE)
+public @interface SingleInstance {
 	
 }

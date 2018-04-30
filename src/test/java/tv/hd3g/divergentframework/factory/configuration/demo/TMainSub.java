@@ -14,17 +14,17 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.demo;
+package tv.hd3g.divergentframework.factory.configuration.demo;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import tv.hd3g.divergentframework.factory.annotations.OnAfterInjectConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.OnAfterUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.OnBeforeRemovedInConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.OnBeforeUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.TargetGenericClassType;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterInjectConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeRemovedInConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.TargetGenericClassType;
 
 public class TMainSub {
 	

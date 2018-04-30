@@ -14,21 +14,22 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.annotations;
+package tv.hd3g.divergentframework.factory.configuration.annotations;
 
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+import tv.hd3g.divergentframework.factory.configuration.validation.DefaultValidator;
+
 @Retention(RUNTIME)
 @Target(FIELD)
-public @interface TargetGenericClassType {
+@Repeatable(ConfigurableValidators.class)
+public @interface ConfigurableValidator {
 	
-	/**
-	 * @return the type to cast with
-	 */
-	Class<?> value();
+	Class<? extends DefaultValidator> value();
 	
 }

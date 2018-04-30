@@ -14,7 +14,7 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.configuration;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -39,14 +39,18 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 
-import tv.hd3g.divergentframework.factory.annotations.ConfigurableValidator;
-import tv.hd3g.divergentframework.factory.annotations.OnAfterInjectConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.OnAfterUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.OnBeforeRemovedInConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.OnBeforeUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.annotations.TargetGenericClassType;
-import tv.hd3g.divergentframework.factory.validation.DefaultValidator;
+import tv.hd3g.divergentframework.factory.GsonKit;
+import tv.hd3g.divergentframework.factory.configuration.annotations.ConfigurableValidator;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterInjectConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeRemovedInConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
+import tv.hd3g.divergentframework.factory.configuration.annotations.TargetGenericClassType;
+import tv.hd3g.divergentframework.factory.configuration.validation.DefaultValidator;
 
+/**
+ * Manage created objects lifecycle with linked configuration
+ */
 class ClassConfigurator {
 	private static Logger log = Logger.getLogger(ClassConfigurator.class);
 	
@@ -506,6 +510,18 @@ class ClassConfigurator {
 		
 		log.debug("Reconfigure " + from_type + " with " + new_configuration);
 		getFrom(from_type).callbackOnBeforeUpdateConfiguration(instance_to_update).setObjectConfiguration(instance_to_update, new_configuration, MissingKeyBehavior.IGNORE).callbackOnAfterUpdateConfiguration(instance_to_update);
+	}
+	
+	/**
+	 * @param configuration if empty, do nothing
+	 */
+	void removeObjectConfiguration(Class<?> from_type, Object instance_to_callback) {
+		if (isClassIsBlacklisted(from_type)) {
+			log.debug("Can't configure " + from_type + " (internaly blacklisted)");
+			return;
+		}
+		log.debug("Unconfigure " + from_type);
+		getFrom(from_type).callbackOnBeforeRemovedInConfiguration(instance_to_callback);
 	}
 	
 }

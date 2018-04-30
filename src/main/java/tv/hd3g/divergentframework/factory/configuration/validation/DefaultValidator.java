@@ -14,21 +14,22 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.annotations;
+package tv.hd3g.divergentframework.factory.configuration.validation;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import java.util.function.Predicate;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import com.google.gson.JsonElement;
 
-/**
- * Only triggered after the first Configuration set, just before next configuration updates
- * Reconfiguration callbacks is not triggered with JsonArray items.
- * Visible for public, protected, package and private class methods, and public only inherited methods.
- */
-@Retention(RUNTIME)
-@Target(METHOD)
-public @interface OnBeforeUpdateConfiguration {
+public class DefaultValidator {
+	
+	/**
+	 * Get a validation predicate, with the raw source from Configuration
+	 * @return always true by default
+	 */
+	public Predicate<JsonElement> getValidator() {
+		return (o) -> {
+			return true;
+		};
+	}
 	
 }

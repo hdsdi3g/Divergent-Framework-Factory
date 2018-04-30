@@ -17,10 +17,9 @@
 package tv.hd3g.divergentframework.factory;
 
 import junit.framework.TestCase;
-import tv.hd3g.divergentframework.factory.demo.SingleCar;
+import tv.hd3g.divergentframework.factory.configuration.demo.SingleCar;
 
-@Deprecated
-public class TestSingleCar extends TestCase {// XXX move all to Factory and conf tests
+public class FactoryTest extends TestCase {
 	
 	public void testSimpleNew() {
 		SingleCar sc = new SingleCar();
@@ -40,7 +39,7 @@ public class TestSingleCar extends TestCase {// XXX move all to Factory and conf
 	
 	public void testFactoryWithConf() throws ReflectiveOperationException {
 		Factory f = new Factory();
-		// TODO push conf here, and test it
+		// TODO2 push conf here, and test it
 		SingleCar sc = f.create(SingleCar.class);
 		
 		assertNull(sc.getColor());
@@ -49,6 +48,6 @@ public class TestSingleCar extends TestCase {// XXX move all to Factory and conf
 		assertNull(sc.getPoints_by_names());
 	}
 	
-	// TODO test callbacks (first, before next, after next)
+	// TODO2 test callbacks (first, before next, after next)
 	
 }

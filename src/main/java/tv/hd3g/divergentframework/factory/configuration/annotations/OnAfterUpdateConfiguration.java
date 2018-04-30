@@ -14,19 +14,21 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.annotations;
+package tv.hd3g.divergentframework.factory.configuration.annotations;
 
-import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Reuse previousely created Object with Factory
+ * Only triggered after the first Configuration set, after next configuration updates.
+ * Reconfiguration callbacks is not triggered with JsonArray items.
+ * Visible for public, protected, package and private class methods, and public only inherited methods.
  */
 @Retention(RUNTIME)
-@Target(TYPE)
-public @interface SingleInstance {
+@Target(METHOD)
+public @interface OnAfterUpdateConfiguration {
 	
 }

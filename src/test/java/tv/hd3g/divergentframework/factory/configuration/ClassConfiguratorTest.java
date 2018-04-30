@@ -14,7 +14,7 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.configuration;
 
 import java.awt.Point;
 import java.io.IOException;
@@ -27,19 +27,23 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import junit.framework.TestCase;
-import tv.hd3g.divergentframework.factory.demo.SingleCar;
-import tv.hd3g.divergentframework.factory.demo.SingleCar.Wheel;
-import tv.hd3g.divergentframework.factory.demo.SingleCar.WheelType;
-import tv.hd3g.divergentframework.factory.demo.TMainSub;
-import tv.hd3g.divergentframework.factory.demo.TMainSub.Counters;
-import tv.hd3g.divergentframework.factory.demo.TMainSub.SubA;
-import tv.hd3g.divergentframework.factory.demo.TMainSub.SubA.SubB;
-import tv.hd3g.divergentframework.factory.demo.TMainSub.SubC;
+import tv.hd3g.divergentframework.factory.Factory;
+import tv.hd3g.divergentframework.factory.GsonKit;
+import tv.hd3g.divergentframework.factory.configuration.demo.SingleCar;
+import tv.hd3g.divergentframework.factory.configuration.demo.SingleCar.Wheel;
+import tv.hd3g.divergentframework.factory.configuration.demo.SingleCar.WheelType;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.Counters;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.SubA;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.SubA.SubB;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.SubC;
 
 public class ClassConfiguratorTest extends TestCase {
 	
+	private static final GsonKit gson_kit = new Factory().createGsonKit();
+	
 	public void testBlackLists() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			return null;
 		});
 		
@@ -51,7 +55,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testSimple() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -79,7 +83,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testReconfigure() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -107,7 +111,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testValidator() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -134,7 +138,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testCallbacks() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -177,7 +181,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testSimpleList() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -207,7 +211,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testSimpleMap() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -248,7 +252,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testSubclass() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -277,7 +281,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testComplexList() {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {
@@ -347,7 +351,7 @@ public class ClassConfiguratorTest extends TestCase {
 	}
 	
 	public void testComplexMap() throws IOException {
-		ClassConfigurator cc = new ClassConfigurator(new GsonKit(), c -> {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
 			try {
 				return c.getConstructor().newInstance();
 			} catch (ReflectiveOperationException e) {

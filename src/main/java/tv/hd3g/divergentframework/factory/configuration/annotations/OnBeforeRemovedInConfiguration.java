@@ -14,7 +14,7 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.annotations;
+package tv.hd3g.divergentframework.factory.configuration.annotations;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -23,12 +23,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Only triggered after the first Configuration set, after next configuration updates.
- * Reconfiguration callbacks is not triggered with JsonArray items.
  * Visible for public, protected, package and private class methods, and public only inherited methods.
+ * Callback is not propaged for deleted object's local variables (not either sub-variables), only triggred for in this class instance.
  */
 @Retention(RUNTIME)
 @Target(METHOD)
-public @interface OnAfterUpdateConfiguration {
+public @interface OnBeforeRemovedInConfiguration {
 	
 }

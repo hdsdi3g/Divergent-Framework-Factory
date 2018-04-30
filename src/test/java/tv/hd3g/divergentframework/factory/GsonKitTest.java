@@ -168,7 +168,7 @@ public class GsonKitTest extends TestCase {
 		ArrayList<String> newers = new ArrayList<>();
 		ArrayList<String> removed = new ArrayList<>();
 		
-		GsonKit.jsonCompare(current, newer, (k, v) -> newers.add(k), (k, v) -> removed.add(k), null, null);
+		GsonKit.jsonCompare(current, newer, (r, k, v) -> newers.add(k), (r, k, v) -> removed.add(k), null, null);
 		
 		assertEquals(1, newers.size());
 		assertEquals(3, removed.size());
