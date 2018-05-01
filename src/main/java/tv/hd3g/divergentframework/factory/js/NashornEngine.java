@@ -14,7 +14,7 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2017
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.js;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -36,7 +36,9 @@ import org.apache.log4j.Logger;
 
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import tv.hd3g.divergentframework.factory.Factory;
 
+@Deprecated
 public class NashornEngine {
 	
 	private static Logger log = Logger.getLogger(Factory.class);

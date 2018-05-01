@@ -14,7 +14,7 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2017
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.js;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -35,6 +35,8 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
+
+@Deprecated
 
 public final class JSModuleManager {
 	private static Logger log = Logger.getLogger(JSModuleManager.class);
@@ -274,14 +276,14 @@ public final class JSModuleManager {
 		}
 		
 		private <T> T bindTo(Class<? extends T> interface_reference) {
-			return Factory.instanceDynamicProxy(interface_reference, (method_desc, arguments) -> {
-				String method = method_desc.getName();
-				if (content.containsKey(method) == false) {
-					log.warn("Interface " + interface_reference.getName() + " want to call a missing JS method, " + method + "() for module " + toString() + " !");
-					return null;
-				}
-				return NashornEngine.getExtractJavaTypeFromJS(content.get(method), arguments);
-			});
+			return null; /*Factory.instanceDynamicProxy(interface_reference, (method_desc, arguments) -> {
+							String method = method_desc.getName();
+							if (content.containsKey(method) == false) {
+							log.warn("Interface " + interface_reference.getName() + " want to call a missing JS method, " + method + "() for module " + toString() + " !");
+							return null;
+							}
+							return NashornEngine.getExtractJavaTypeFromJS(content.get(method), arguments);
+							});*/
 		}
 		
 	}

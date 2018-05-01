@@ -14,19 +14,18 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2017
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.js;
 
-import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.PARAMETER;
-import static java.lang.annotation.ElementType.TYPE;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ TYPE, METHOD, PARAMETER })
-public @interface JSComment {
+@Target({ PARAMETER })
+@Deprecated
+public @interface JSVarName {
 	
 	/**
 	 * @return text to display in generated JS file source

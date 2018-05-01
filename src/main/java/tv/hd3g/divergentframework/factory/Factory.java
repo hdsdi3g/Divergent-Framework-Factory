@@ -19,9 +19,7 @@ package tv.hd3g.divergentframework.factory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,7 +38,7 @@ import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
 import com.google.gson.JsonPrimitive;
 
-import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import tv.hd3g.divergentframework.factory.js.JSModuleManager;
 
 /**
  * Create Objects and search Class
@@ -224,41 +221,6 @@ public class Factory {
 		// return Lists.newArrayList(Auth.class);
 	}
 	
-	/**
-	 * It can instance Interface
-	 * @see https://gist.github.com/thomasdarimont/974bf70fe51bbe03b05e
-	 */
-	public static <T> T instanceDynamicProxy(Class<? extends T> interface_to_instanciate, SimpleInvocationHandler dynamic_behavior) {
-		ClassLoader cl = Thread.currentThread().getContextClassLoader();
-		// ClassLoader.getSystemClassLoader()
-		Object proxy = Proxy.newProxyInstance(cl, new Class[] { interface_to_instanciate }, (Object _proxy_do_not_use, Method method, Object[] arguments) -> {
-			return dynamic_behavior.dynamicInvoke(method, arguments);
-		});
-		
-		@SuppressWarnings("unchecked")
-		T result = (T) proxy;
-		return result;
-	}
-	
-	/**
-	 * @see ScriptObjectMirror
-	 */
-	public <T> T getInterfaceDeclaredByJSModule(File configuration_dir, Class<? extends T> interface_reference, String module_name, Supplier<T> default_if_not_declare) {
-		synchronized (lock) {
-			if (js_module_manager == null) {
-				js_module_manager = new JSModuleManager(configuration_dir);
-			}
-			js_module_manager.load();
-		}
-		
-		T result = js_module_manager.moduleBindTo(module_name, interface_reference);
-		if (result == null) {
-			return default_if_not_declare.get();
-		}
-		
-		return result;
-	}
-	
 	public GsonKit createGsonKit() {
 		GsonKit g_kit = new GsonKit();
 		
@@ -278,5 +240,7 @@ public class Factory {
 		
 		return g_kit;
 	}
+	
+	// TODO2 Interface <-> implemented class/js file, def in a config file
 	
 }

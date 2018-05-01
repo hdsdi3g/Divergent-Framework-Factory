@@ -14,13 +14,24 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2017
  * 
 */
-package tv.hd3g.divergentframework.factory;
+package tv.hd3g.divergentframework.factory.js;
 
-import java.lang.reflect.Method;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.TYPE;
 
-@FunctionalInterface
-public interface SimpleInvocationHandler {
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ TYPE, METHOD, PARAMETER })
+@Deprecated
+public @interface JSComment {
 	
-	public Object dynamicInvoke(Method method, Object... arguments) throws Throwable;
+	/**
+	 * @return text to display in generated JS file source
+	 */
+	String value();
 	
 }
