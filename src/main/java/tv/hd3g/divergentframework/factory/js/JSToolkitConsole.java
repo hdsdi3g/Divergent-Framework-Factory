@@ -21,7 +21,8 @@ import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 
-public class JSToolkitConsole {
+class JSToolkitConsole {
+	
 	private Logger logger;
 	
 	JSToolkitConsole(Logger logger) {

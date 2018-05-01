@@ -24,7 +24,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Reader;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -37,15 +41,16 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
+import jdk.nashorn.api.scripting.ScriptObjectMirror;
 
-public class JsLoader {
-	private static Logger log = Logger.getLogger(JsLoader.class);
+public class JsToolkit {
+	private static Logger log = Logger.getLogger(JsToolkit.class);
 	
 	private final ScriptEngine engine;
 	private final SimpleBindings bindings;
 	private PrintStream error_out;
 	
-	public JsLoader() {
+	public JsToolkit() {
 		engine = new NashornScriptEngineFactory().getScriptEngine(classname -> {
 			return true;
 		});
@@ -62,16 +67,22 @@ public class JsLoader {
 		return bindings;
 	}
 	
-	public synchronized JsLoader setVerboseErrors(PrintStream error_out) {
+	public synchronized JsToolkit setVerboseErrors(PrintStream error_out) {
 		this.error_out = error_out;
 		return this;
 	}
 	
+	/**
+	 * @return Java primitive type or ScriptObjectMirror for complex results.
+	 */
 	public Object eval(File js_file) throws IOException {
 		log.debug("Load and eval JS file: " + js_file);
 		return eval(new FileReader(js_file), js_file.getPath());
 	}
 	
+	/**
+	 * @return Java primitive type or ScriptObjectMirror for complex results.
+	 */
 	public Object eval(Reader js_source, String source_name) throws IOException {
 		ArrayList<String> file_lines = new ArrayList<>();
 		try (BufferedReader br = new BufferedReader(js_source)) {
@@ -85,10 +96,16 @@ public class JsLoader {
 		return eval(file_lines, source_name);
 	}
 	
+	/**
+	 * @return Java primitive type or ScriptObjectMirror for complex results.
+	 */
 	public Object eval(InputStream js_source, String source_name) throws IOException {
 		return eval(new InputStreamReader(js_source), source_name);
 	}
 	
+	/**
+	 * @return Java primitive type or ScriptObjectMirror for complex results.
+	 */
 	public Object eval(ArrayList<String> file_lines, String source_name) {
 		if (file_lines == null) {
 			throw new NullPointerException("\"file_lines\" can't to be null");
@@ -124,16 +141,18 @@ public class JsLoader {
 		}
 	}
 	
-	// TODO2 js file <-> Interface, plugged with Factory
-	
-	/*
+	/**
 	 * It can instance Interface
 	 * @see https://gist.github.com/thomasdarimont/974bf70fe51bbe03b05e
+	 *      TODO move to factory
 	 */
-	/*
 	public static <T> T instanceDynamicProxy(Class<? extends T> interface_to_instanciate, SimpleInvocationHandler dynamic_behavior) {
+		if (interface_to_instanciate.isInterface() == false) {
+			throw new ClassCastException("Class " + interface_to_instanciate + " is not an Interface");
+		}
+		
 		ClassLoader cl = Thread.currentThread().getContextClassLoader();
-		// ClassLoader.getSystemClassLoader()
+		
 		Object proxy = Proxy.newProxyInstance(cl, new Class[] { interface_to_instanciate }, (Object _proxy_do_not_use, Method method, Object[] arguments) -> {
 			return dynamic_behavior.dynamicInvoke(method, arguments);
 		});
@@ -141,25 +160,69 @@ public class JsLoader {
 		@SuppressWarnings("unchecked")
 		T result = (T) proxy;
 		return result;
-	}*/
+	}
 	
-	/*
-	 * @see ScriptObjectMirror
+	/**
+	 * @return java native, emptyList, ArrayList, emptyMap, LinkedHashMap
 	 */
-	/*public <T> T getInterfaceDeclaredByJSModule(File configuration_dir, Class<? extends T> interface_reference, String module_name, Supplier<T> default_if_not_declare) {
-		synchronized (lock) {
-			if (js_module_manager == null) {
-				js_module_manager = new JSModuleManager(configuration_dir);
+	public static Object getExtractJavaTypeFromJS(Object raw_js_attribute, Object... arguments_if_function_to_call) {
+		if (raw_js_attribute == null) {
+			return null;
+		}
+		if ((raw_js_attribute instanceof ScriptObjectMirror) == false) {
+			return raw_js_attribute;
+		}
+		ScriptObjectMirror js_attribute = (ScriptObjectMirror) raw_js_attribute;
+		
+		if (js_attribute.isArray()) {
+			if (js_attribute.size() == 0) {
+				return Collections.emptyList();
+			} else {
+				ArrayList<Object> items = new ArrayList<>(js_attribute.size());
+				js_attribute.forEach((pos, value) -> {
+					items.add(getExtractJavaTypeFromJS(value, arguments_if_function_to_call));
+				});
+				return items;
 			}
-			js_module_manager.load();
+		} else if (js_attribute.isFunction()) {
+			return getExtractJavaTypeFromJS(js_attribute.call(null, arguments_if_function_to_call), arguments_if_function_to_call);
+		} else {
+			if (js_attribute.size() == 0) {
+				return Collections.emptyMap();
+			} else {
+				LinkedHashMap<String, Object> items = new LinkedHashMap<>(js_attribute.size());
+				js_attribute.forEach((key, value) -> {
+					items.put(key, getExtractJavaTypeFromJS(value, arguments_if_function_to_call));
+				});
+				return items;
+			}
+		}
+	}
+	
+	public <T> T instanceTypeFromJs(Class<T> type, ScriptObjectMirror js_content) throws ScriptException {
+		if (js_content == null) {
+			throw new NullPointerException("\"js_content\" can't to be null");
+		} else if (js_content.isArray()) {
+			throw new ScriptException("js_content parameter can't be a JS Array");
+		} else if (js_content.getClassName().equalsIgnoreCase("Object") == false) {
+			throw new ScriptException("js_content parameter must be a JS object");
 		}
 		
-		T result = js_module_manager.moduleBindTo(module_name, interface_reference);
-		if (result == null) {
-			return default_if_not_declare.get();
-		}
+		// TODO first pass to check missing declarations ?
 		
-		return result;
-	}*/
+		/*instanceDynamicProxy(interface_reference, (method_desc, arguments) -> {
+		String method = method_desc.getName();
+		if (content.containsKey(method) == false) {
+		//log.warn("Interface " + interface_reference.getName() + " want to call a missing JS method, " + method + "() for module " + toString() + " !");
+		return null;
+		}
+		return getExtractJavaTypeFromJS(content.get(method), arguments);
+		});*/
+		
+		return null;// XXX
+	}
+	
+	// TODO2 js file <-> Interface, plugged with Factory
+	// TODO3 "BindTo"
 	
 }
