@@ -14,35 +14,12 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.js;
+package tv.hd3g.divergentframework.factory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-interface DynamicInterface {
+interface SimpleInterface {
 	
-	void simple();
+	String toUpperCase(String source);
 	
-	String stringSupplier();
-	
-	void intConsumer(int value);
-	
-	long biConsumer(long value1, long value2);
-	
-	int stringToIntFunction(String value);
-	
-	int varArgs(int... values);
-	
-	default boolean aDefault() {
-		return true;
-	}
-	
-	List<String> stringList(ArrayList<String> values);
-	
-	HashMap<String, Integer> intMap(Map<String, Integer> values);
-	
-	String formStaticJS();
+	String whoami();
 	
 }

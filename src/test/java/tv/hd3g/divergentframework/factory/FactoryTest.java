@@ -16,6 +16,10 @@
 */
 package tv.hd3g.divergentframework.factory;
 
+import java.io.IOException;
+
+import javax.script.ScriptException;
+
 import junit.framework.TestCase;
 import tv.hd3g.divergentframework.factory.configuration.demo.SingleCar;
 
@@ -27,7 +31,7 @@ public class FactoryTest extends TestCase {
 		assertNull(sc.getColor());
 	}
 	
-	public void testSimpleFactory() throws ReflectiveOperationException {
+	public void testSimpleFactory() throws ReflectiveOperationException, IOException, ScriptException {
 		Factory f = new Factory();
 		SingleCar sc = f.create(SingleCar.class);
 		
@@ -37,7 +41,7 @@ public class FactoryTest extends TestCase {
 		assertNull(sc.getPoints_by_names());
 	}
 	
-	public void testFactoryWithConf() throws ReflectiveOperationException {
+	public void testFactoryWithConf() throws ReflectiveOperationException, IOException, ScriptException {
 		Factory f = new Factory();
 		// push conf here, and test it
 		SingleCar sc = f.create(SingleCar.class);
@@ -48,6 +52,26 @@ public class FactoryTest extends TestCase {
 		assertNull(sc.getPoints_by_names());
 	}
 	
+	public void testInterfaceImpl() throws ReflectiveOperationException, IOException, ScriptException {
+		Factory f = new Factory();
+		f.getJsToolkit().setVerboseErrors(System.err);
+		
+		f.getBindMap().load(FactoryTest.class.getResource("bind_map.properties").openStream());
+		
+		SimpleInterface result = f.create(SimpleInterface.class);
+		assertNotNull(result);
+		assertEquals("AZERTY", result.toUpperCase("aZeRtY"));
+		assertEquals("java", result.whoami());
+		
+		f.getBindMap().put(SimpleInterface.class.getName(), FactoryTest.class.getResource("SimpleInterfaceImpl.js").toString());
+		result = f.create(SimpleInterface.class);
+		assertNotNull(result);
+		assertEquals("AZERTY", result.toUpperCase("aZeRtY"));
+		assertEquals("javascript", result.whoami());
+		
+		System.out.println(FactoryTest.class.getResource("SimpleInterfaceImpl.js"));
+		
+	}
 	// test callbacks (first, before next, after next)
 	
 }

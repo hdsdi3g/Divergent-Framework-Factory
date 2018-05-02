@@ -20,15 +20,20 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import javax.script.ScriptException;
 
 import org.apache.log4j.Logger;
 
@@ -38,7 +43,7 @@ import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
 import com.google.gson.JsonPrimitive;
 
-import tv.hd3g.divergentframework.factory.js.JSModuleManager;
+import tv.hd3g.divergentframework.factory.js.JsToolkit;
 
 /**
  * Create Objects and search Class
@@ -46,12 +51,14 @@ import tv.hd3g.divergentframework.factory.js.JSModuleManager;
 public class Factory {
 	private static Logger log = Logger.getLogger(Factory.class);
 	
-	private ArrayList<File> classpath;
-	private HashMap<String, Class<?>> class_names;
-	private HashSet<String> absent_class_names;
-	private ConcurrentHashMap<Class<?>, Constructor<?>> class_constructor;
+	private final ArrayList<File> classpath;
+	private final HashMap<String, Class<?>> class_names;
+	private final HashSet<String> absent_class_names;
+	private final ConcurrentHashMap<Class<?>, Constructor<?>> class_constructor;
 	private final Object lock;
-	private JSModuleManager js_module_manager;
+	private final Properties bind_map;
+	
+	private JsToolkit js_toolkit;
 	
 	public Factory() {
 		ArrayList<String> classpath_string = Lists.newArrayList(System.getProperty("java.class.path").split(System.getProperty("path.separator")));
@@ -69,6 +76,7 @@ public class Factory {
 		class_names = new HashMap<>();
 		absent_class_names = new HashSet<>();
 		class_constructor = new ConcurrentHashMap<>();
+		bind_map = new Properties();
 		lock = new Object();
 	}
 	
@@ -126,8 +134,49 @@ public class Factory {
 		return getClassByName(class_name) != null;
 	}
 	
-	public <T> T create(Class<T> from_class) throws ReflectiveOperationException {
-		checkIsAccessibleClass(from_class, true);
+	/**
+	 * @see getBindMap to put Interface <-> java class/js file (with JsToolkit)
+	 */
+	public <T> T create(Class<T> from_class_or_interface) throws ReflectiveOperationException {
+		checkIsAccessibleClass(from_class_or_interface, true);
+		
+		Class<T> from_class = from_class_or_interface;
+		if (from_class_or_interface.isInterface()) {
+			String bind_to = bind_map.getProperty(from_class_or_interface.getName());
+			
+			if (bind_to == null) {
+				throw new ClassNotFoundException("Interface " + from_class_or_interface + " is not binded to a class or JS file. Can't instance a simple Interface.");
+			}
+			
+			try {
+				File source_file = new File(bind_to);
+				if (source_file.exists() && source_file.canRead() && source_file.isFile()) {
+					return getJsToolkit().instanceTypeFromJs(from_class_or_interface, source_file, true);
+				} else {
+					try {
+						URL url = new URL(bind_to);
+						return getJsToolkit().instanceTypeFromJs(from_class_or_interface, url.openStream(), url.toString(), true);
+					} catch (MalformedURLException e) {
+					}
+				}
+			} catch (IOException | ScriptException e) {
+				throw new ReflectiveOperationException("Can't instance Interface " + from_class_or_interface.getName(), e);
+			}
+			
+			if (isClassExists(bind_to) == false) {
+				throw new ClassNotFoundException("Interface " + from_class_or_interface + " is badly binded to \"" + bind_to + "\". Only JS File, JS from URL and simple class are valid");
+			}
+			
+			Class<?> implementation_candidate = getClassByName(bind_to);
+			
+			if (from_class_or_interface.isAssignableFrom(implementation_candidate) == false) {
+				throw new ReflectiveOperationException("Class " + implementation_candidate + " is not assignable to Interface " + from_class_or_interface);
+			}
+			
+			@SuppressWarnings("unchecked")
+			Class<T> checked_class = (Class<T>) implementation_candidate;
+			from_class = checked_class;
+		}
 		
 		Constructor<?> constructor = class_constructor.computeIfAbsent(from_class, cl -> {
 			Optional<Constructor<?>> o_result = Arrays.asList(cl.getConstructors()).stream().filter(c -> {
@@ -151,10 +200,6 @@ public class Factory {
 		return result;
 	}
 	
-	/**
-	 * @param onError can be null
-	 * @return never null
-	 */
 	public <T> T create(String class_name, Class<T> type) throws ReflectiveOperationException {
 		if (class_name == null) {
 			throw new NullPointerException("\"class_name\" can't to be null");
@@ -218,7 +263,6 @@ public class Factory {
 		} catch (IOException e) {
 			throw new ClassNotFoundException("Can't search in classpath", e);
 		}
-		// return Lists.newArrayList(Auth.class);
 	}
 	
 	public GsonKit createGsonKit() {
@@ -241,6 +285,26 @@ public class Factory {
 		return g_kit;
 	}
 	
-	// TODO2 Interface <-> implemented class/js file, def in a config file
+	/**
+	 * @return js_toolkit common on this Factory instance.
+	 */
+	public JsToolkit getJsToolkit() {
+		if (js_toolkit == null) {
+			synchronized (lock) {
+				js_toolkit = new JsToolkit();
+			}
+		}
+		return js_toolkit;
+	}
+	
+	/**
+	 * Formats:
+	 * - package.Interface=package.ClassImplementInterface (simple class)
+	 * - package.Interface=/Path/To/file.js (file)
+	 * - package.Interface=file:/Path/To/file.js (URL)
+	 */
+	public Properties getBindMap() {
+		return bind_map;
+	}
 	
 }
