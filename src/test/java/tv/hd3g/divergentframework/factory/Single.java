@@ -1,5 +1,5 @@
 /*
- * This file is part of Divergent Framework Factory.
+ * This file is part of Divergent-Framework-Factory.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -16,17 +16,15 @@
 */
 package tv.hd3g.divergentframework.factory;
 
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
-/**
- * Reuse previousely created Object with a Factory
- */
-@Retention(RUNTIME)
-@Target(TYPE)
-public @interface SingleInstance {
+@SingleInstance
+class Single {
+	
+	boolean done;
+	long counter;
+	
+	public Single() {
+		done = true;
+		counter = System.nanoTime();
+	}
 	
 }

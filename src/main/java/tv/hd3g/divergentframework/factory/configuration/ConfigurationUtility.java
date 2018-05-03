@@ -44,7 +44,7 @@ import tv.hd3g.divergentframework.factory.Logtoolkit;
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// TODO4 inject conf files + vars + env
+	// TODO3 inject conf files + vars + env
 	
 	private final Factory factory;
 	private final GsonKit gson_kit;
@@ -87,6 +87,7 @@ public class ConfigurationUtility {
 	}
 	
 	/**
+	 * Before set configuration files.
 	 * @param file is properties file syntax.
 	 * @return this
 	 */
@@ -155,6 +156,7 @@ public class ConfigurationUtility {
 	}
 	
 	/**
+	 * After set and inject conf files (?)
 	 * With watched_configuration_files_and_dirs, update content and internal content of configuration_files.
 	 * @return this
 	 */
@@ -254,6 +256,10 @@ public class ConfigurationUtility {
 		return this;
 	}
 	
+	/**
+	 * After set new configuration files.
+	 * @return this.
+	 */
 	public ConfigurationUtility injectConfiguration() {
 		synchronized (configuration_files) {
 			LinkedHashMap<ConfiguredClass<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();

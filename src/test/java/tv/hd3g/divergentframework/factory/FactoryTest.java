@@ -42,14 +42,17 @@ public class FactoryTest extends TestCase {
 	}
 	
 	public void testFactoryWithConf() throws ReflectiveOperationException, IOException, ScriptException {
+		// TODO3 push conf here
+		
 		Factory f = new Factory();
-		// TODO2 push conf here, and test it
+		
 		SingleCar sc = f.create(SingleCar.class);
 		
 		assertNull(sc.getColor());
 		assertNull(sc.getPossible_wheel_type());
 		assertNull(sc.getPassager_names());
 		assertNull(sc.getPoints_by_names());
+		// TODO3 and test conf it
 	}
 	
 	public void testInterfaceImpl() throws ReflectiveOperationException, IOException, ScriptException {
@@ -74,4 +77,25 @@ public class FactoryTest extends TestCase {
 	}
 	// TODO2 test callbacks (first, before next, after next)
 	
+	public void testSingleInstance() throws Exception {
+		Factory f = new Factory();
+		
+		Single single = f.create(Single.class);
+		assertNotNull(single);
+		assertTrue(single.done);
+		
+		Single single_twice = f.create(Single.class);
+		assertNotNull(single_twice);
+		assertTrue(single_twice.done);
+		assertEquals(single, single_twice);
+		assertEquals(single.counter, single_twice.counter);
+		
+		f.removeSingleInstance(Single.class);
+		
+		Single single_3rd = f.create(Single.class);
+		assertNotNull(single_3rd);
+		assertTrue(single_3rd.done);
+		assertNotSame(single, single_3rd);
+		assertNotSame(single.counter, single_3rd.counter);
+	}
 }

@@ -43,6 +43,7 @@ import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
 import com.google.gson.JsonPrimitive;
 
+import tv.hd3g.divergentframework.factory.configuration.ConfigurationUtility;
 import tv.hd3g.divergentframework.factory.js.JsToolkit;
 
 /**
@@ -57,6 +58,8 @@ public class Factory {
 	private final ConcurrentHashMap<Class<?>, Constructor<?>> class_constructor;
 	private final Object lock;
 	private final Properties bind_map;
+	private final ConcurrentHashMap<Class<?>, Object> single_instances;
+	private final ConfigurationUtility configurator;
 	
 	private JsToolkit js_toolkit;
 	
@@ -78,6 +81,9 @@ public class Factory {
 		class_constructor = new ConcurrentHashMap<>();
 		bind_map = new Properties();
 		lock = new Object();
+		single_instances = new ConcurrentHashMap<>();
+		
+		configurator = new ConfigurationUtility(this);// TODO2 init ?
 	}
 	
 	/**
@@ -137,11 +143,7 @@ public class Factory {
 	/**
 	 * @see getBindMap to put Interface <-> java class/js file (with JsToolkit)
 	 */
-	public <T> T create(Class<T> from_class_or_interface) throws ReflectiveOperationException {
-		// TODO4 get SingleInstance
-		
-		checkIsAccessibleClass(from_class_or_interface, true);
-		
+	private <T> T createNewInstance(Class<T> from_class_or_interface) throws ReflectiveOperationException {
 		Class<T> from_class = from_class_or_interface;
 		if (from_class_or_interface.isInterface()) {
 			String bind_to = bind_map.getProperty(from_class_or_interface.getName());
@@ -199,17 +201,16 @@ public class Factory {
 		@SuppressWarnings("unchecked")
 		T result = (T) constructor.newInstance();
 		
-		if (false) {
+		/*if (false) {
 			// TODO3 check if this *class* is configured >> ConfigurationUtility
-		}
-		
-		// TODO4 add to SingleInstance if needed
+		}*/
 		
 		return result;
 	}
 	
-	// TODO4 set ConfigurationUtility
-	
+	/**
+	 * @see SingleInstance Annotation
+	 */
 	public <T> T create(String class_name, Class<T> type) throws ReflectiveOperationException {
 		if (class_name == null) {
 			throw new NullPointerException("\"class_name\" can't to be null");
@@ -317,6 +318,41 @@ public class Factory {
 		return bind_map;
 	}
 	
-	// TODO4 During the creation with Factory, if a field has a class type @SingleInstance, do a dynamic Injection & configure it, before current class conf.
+	/**
+	 * @return this
+	 */
+	public Factory removeSingleInstance(Class<?> created_class) {
+		single_instances.remove(created_class);
+		return this;
+	}
+	
+	/**
+	 * @see getBindMap to put Interface <-> java class/js file (with JsToolkit)
+	 * @see SingleInstance Annotation
+	 */
+	public <T> T create(Class<T> from_class_or_interface) throws ReflectiveOperationException {
+		checkIsAccessibleClass(from_class_or_interface, true);
+		
+		SingleInstance single_instance_annotation = from_class_or_interface.getAnnotation(SingleInstance.class);
+		
+		if (single_instance_annotation != null) {
+			@SuppressWarnings("unchecked")
+			T result = (T) single_instances.computeIfAbsent(from_class_or_interface, class_to_instance -> {
+				try {
+					return createNewInstance(class_to_instance);
+				} catch (ReflectiveOperationException e) {
+					throw new RuntimeException("Can't instance SingleInstance " + from_class_or_interface.getSimpleName(), e);
+				}
+			});
+			
+			return result;
+		}
+		
+		return createNewInstance(from_class_or_interface);
+	}
+	
+	public ConfigurationUtility getConfigurator() {
+		return configurator;
+	}
 	
 }
