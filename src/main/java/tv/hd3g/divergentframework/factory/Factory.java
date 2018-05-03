@@ -138,6 +138,8 @@ public class Factory {
 	 * @see getBindMap to put Interface <-> java class/js file (with JsToolkit)
 	 */
 	public <T> T create(Class<T> from_class_or_interface) throws ReflectiveOperationException {
+		// TODO4 get SingleInstance
+		
 		checkIsAccessibleClass(from_class_or_interface, true);
 		
 		Class<T> from_class = from_class_or_interface;
@@ -180,7 +182,7 @@ public class Factory {
 		
 		Constructor<?> constructor = class_constructor.computeIfAbsent(from_class, cl -> {
 			Optional<Constructor<?>> o_result = Arrays.asList(cl.getConstructors()).stream().filter(c -> {
-				return c.canAccess(null) && (c.getParameterCount() == 0) && (c.isVarArgs() == false);
+				return c.canAccess(null) && c.getParameterCount() == 0 && c.isVarArgs() == false;
 			}).findFirst();
 			
 			if (o_result.isPresent()) {
@@ -197,8 +199,16 @@ public class Factory {
 		@SuppressWarnings("unchecked")
 		T result = (T) constructor.newInstance();
 		
+		if (false) {
+			// TODO3 check if this *class* is configured >> ConfigurationUtility
+		}
+		
+		// TODO4 add to SingleInstance if needed
+		
 		return result;
 	}
+	
+	// TODO4 set ConfigurationUtility
 	
 	public <T> T create(String class_name, Class<T> type) throws ReflectiveOperationException {
 		if (class_name == null) {
@@ -306,5 +316,7 @@ public class Factory {
 	public Properties getBindMap() {
 		return bind_map;
 	}
+	
+	// TODO4 During the creation with Factory, if a field has a class type @SingleInstance, do a dynamic Injection & configure it, before current class conf.
 	
 }

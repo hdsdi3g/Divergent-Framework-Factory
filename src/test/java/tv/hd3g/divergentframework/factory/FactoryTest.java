@@ -43,7 +43,7 @@ public class FactoryTest extends TestCase {
 	
 	public void testFactoryWithConf() throws ReflectiveOperationException, IOException, ScriptException {
 		Factory f = new Factory();
-		// push conf here, and test it
+		// TODO2 push conf here, and test it
 		SingleCar sc = f.create(SingleCar.class);
 		
 		assertNull(sc.getColor());
@@ -72,6 +72,6 @@ public class FactoryTest extends TestCase {
 		System.out.println(FactoryTest.class.getResource("SimpleInterfaceImpl.js"));
 		
 	}
-	// test callbacks (first, before next, after next)
+	// TODO2 test callbacks (first, before next, after next)
 	
 }

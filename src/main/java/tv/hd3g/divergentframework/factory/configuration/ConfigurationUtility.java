@@ -44,7 +44,7 @@ import tv.hd3g.divergentframework.factory.Logtoolkit;
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// inject conf files + vars + env
+	// TODO4 inject conf files + vars + env
 	
 	private final Factory factory;
 	private final GsonKit gson_kit;

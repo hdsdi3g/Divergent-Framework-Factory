@@ -52,7 +52,7 @@ class ConfiguredClass<T> {
 		if (target_class.isAssignableFrom(instance.getClass()) == false) {
 			throw new ClassCastException(instance.getClass().getName() + " is not assignable from " + target_class.getName());
 		}
-		// call transformators (and create API)
+		// TODO4 call transformators (and create API)
 		
 		class_configurator.configureNewObjectWithJson(target_class, instance, actual_class_configuration);
 		
