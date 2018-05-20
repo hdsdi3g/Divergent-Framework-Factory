@@ -44,7 +44,7 @@ import tv.hd3g.divergentframework.factory.Logtoolkit;
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// TODO3 inject conf files + vars + env
+	// TODO3 add *regular* watcher
 	
 	private final Factory factory;
 	private final GsonKit gson_kit;
@@ -129,14 +129,16 @@ public class ConfigurationUtility {
 	 * @param search all files in list and in dirs (don't search in sub dir).
 	 * @return this
 	 */
-	public ConfigurationUtility addConfigurationFiles(File... conf_file_or_dir) {
+	public ConfigurationUtility addConfigurationFilesToInternalList(File... conf_file_or_dir) {
 		if (conf_file_or_dir == null) {
 			return this;
 		}
-		log.info("Add configuration files: " + conf_file_or_dir);
+		
+		List<File> conf_file_or_dir_list = Arrays.asList(conf_file_or_dir);
+		log.info("Add configuration files: " + conf_file_or_dir_list);
 		
 		synchronized (watched_configuration_files_and_dirs) {
-			Arrays.asList(conf_file_or_dir).stream().forEach(file -> {
+			conf_file_or_dir_list.stream().forEach(file -> {
 				if (file == null) {
 					return;
 				}
@@ -156,8 +158,7 @@ public class ConfigurationUtility {
 	}
 	
 	/**
-	 * After set and inject conf files (?)
-	 * With watched_configuration_files_and_dirs, update content and internal content of configuration_files.
+	 * With watched_configuration_files_and_dirs, update content and internal content of configuration_files. Do regulary this.
 	 * @return this
 	 */
 	public ConfigurationUtility scanAndImportFiles() {
@@ -198,15 +199,25 @@ public class ConfigurationUtility {
 				log.trace("Found config file: " + file);
 			}).collect(Collectors.toList());
 			
+			if (last_current_founded_files.isEmpty() == false && log.isDebugEnabled()) {
+				log.debug("Current last_current_founded_files: " + last_current_founded_files);
+			}
+			
 			synchronized (configuration_files) {
 				List<ConfigurationFile> added_configuration_files = last_current_founded_files.stream().filter(file -> {
+					/**
+					 * add new added files
+					 */
 					return configuration_files.stream().anyMatch(c_file -> {
-						return c_file.linked_file.equals(file) == false;
-					});
+						return c_file.linked_file.equals(file);
+					}) == false;
 				}).map(file -> {
 					return new ConfigurationFile(file);
 				}).map(file -> {
 					try {
+						/**
+						 * Test new syntax
+						 */
 						file.parseFile();
 						return file;
 					} catch (IOException e) {
@@ -218,6 +229,10 @@ public class ConfigurationUtility {
 				}).peek(c_file -> {
 					log.info("Found a new config file: " + c_file);
 				}).collect(Collectors.toList());
+				
+				if (added_configuration_files.isEmpty() == false && log.isDebugEnabled()) {
+					log.debug("Current added_configuration_files: " + added_configuration_files);
+				}
 				
 				configuration_files.addAll(added_configuration_files);
 				
@@ -231,98 +246,80 @@ public class ConfigurationUtility {
 					return must_remove;
 				});
 				
-				configuration_files.stream().filter(c_file -> {
-					return last_current_founded_files.stream().anyMatch(file -> {
-						return c_file.linked_file.equals(file);
-					});
-				}).filter(c_file -> {
-					return c_file.isUpdated();
-				}).map(c_file -> {
-					try {
-						return c_file.parseFile();
-					} catch (IOException e) {
-						log.error("Can't parse config file " + c_file.linked_file, e);
-						return null;
-					}
-				}).filter(file -> {
-					return file != null;
-				}).forEach(c_file -> {
-					log.info("Found an updated config file: " + c_file);
-				});
-				
-			}
-		}
-		
-		return this;
-	}
-	
-	/**
-	 * After set new configuration files.
-	 * @return this.
-	 */
-	public ConfigurationUtility injectConfiguration() {
-		synchronized (configuration_files) {
-			LinkedHashMap<ConfiguredClass<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
-			
-			synchronized (configured_types) {
-				configuration_files.stream().filter(c_file -> {
-					return c_file.isUpdated();
-				}).forEach(conf -> {
-					try {
-						conf.parseFile().stream().forEach(set_updated_class_name -> {
-							JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
-							
-							if (configured_types.containsKey(set_updated_class_name)) {
-								ConfiguredClass<?> current_class_entry = configured_types.get(set_updated_class_name);
-								if (class_conf_to_update.containsKey(current_class_entry)) {
-									GsonKit.jsonMerge(class_conf_to_update.get(current_class_entry), new_config_for_class, KeyValueNullContentMergeBehavior.KEEP);
-								} else {
-									class_conf_to_update.put(current_class_entry, new_config_for_class);
-								}
-							} else {
-								configured_types.put(set_updated_class_name, new ConfiguredClass<>(class_configurator, gson_kit.getGson(), set_updated_class_name, new_config_for_class));
-							}
-						});
-					} catch (IOException e) {
-						log.error("Can't read/parse file " + conf.linked_file, e);
-					}
-				});
-				
 				/**
-				 * Do a reverse search for removed classes
+				 * Apply newer configurations
 				 */
-				List<Class<?>> all_actual_configured_classes = configuration_files.stream().flatMap(c_f -> {
-					return c_f.config_tree_by_class.keySet().stream();
-				}).collect(Collectors.toList());
-				
-				configured_types.keySet().stream().filter(current_configured_class -> {
-					return all_actual_configured_classes.contains(current_configured_class) == false;
-				}).collect(Collectors.toList()).forEach(class_not_actually_configured -> {
-					log.debug("Remove configuration tree for " + class_not_actually_configured);
-					configured_types.remove(class_not_actually_configured).afterRemovedConf();
-				});
-			}
-			
-			/**
-			 * Update all current configured classes
-			 */
-			if (class_conf_to_update.isEmpty() == false) {
-				if (log.isTraceEnabled()) {
-					log.trace("Update previously configured classes " + class_conf_to_update);
-				} else if (log.isDebugEnabled()) {
-					log.debug("Update previously configured classes " + class_conf_to_update.keySet());
-				}
-				
-				class_conf_to_update.forEach((c_e, new_class_configuration) -> {
-					if (log.isDebugEnabled()) {
-						if (log.isTraceEnabled()) {
-							log.trace("Update all configured instances for " + c_e + " with conf " + new_class_configuration);
-						} else {
-							log.debug("Update all configured instances for " + c_e);
+				synchronized (configured_types) {
+					LinkedHashMap<ConfiguredClass<?>, JsonObject> class_conf_to_update = new LinkedHashMap<>();
+					
+					configuration_files.stream().filter(c_file -> {
+						return last_current_founded_files.stream().anyMatch(file -> {
+							return c_file.linked_file.equals(file);
+						});
+					}).filter(c_file -> {
+						return c_file.isUpdated();
+					}).peek(file -> {
+						log.trace("!!!!" + file);
+					}).forEach(conf -> {
+						try {
+							log.info("Found an updated config file: " + conf);
+							
+							conf.switchUpdateDate();
+							conf.parseFile().stream().forEach(set_updated_class_name -> {
+								JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
+								
+								if (configured_types.containsKey(set_updated_class_name)) {
+									ConfiguredClass<?> current_class_entry = configured_types.get(set_updated_class_name);
+									if (class_conf_to_update.containsKey(current_class_entry)) {
+										GsonKit.jsonMerge(class_conf_to_update.get(current_class_entry), new_config_for_class, KeyValueNullContentMergeBehavior.KEEP);
+									} else {
+										class_conf_to_update.put(current_class_entry, new_config_for_class);
+									}
+								} else {
+									configured_types.put(set_updated_class_name, new ConfiguredClass<>(class_configurator, gson_kit.getGson(), set_updated_class_name, new_config_for_class));
+								}
+							});
+						} catch (IOException e) {
+							log.error("Can't read/parse file " + conf.linked_file, e);
 						}
+					});
+					
+					/**
+					 * Do a reverse search for removed classes
+					 */
+					List<Class<?>> all_actual_configured_classes = configuration_files.stream().flatMap(c_f -> {
+						return c_f.config_tree_by_class.keySet().stream();
+					}).collect(Collectors.toList());
+					
+					configured_types.keySet().stream().filter(current_configured_class -> {
+						return all_actual_configured_classes.contains(current_configured_class) == false;
+					}).collect(Collectors.toList()).forEach(class_not_actually_configured -> {
+						log.debug("Remove configuration tree for " + class_not_actually_configured);
+						configured_types.remove(class_not_actually_configured).afterRemovedConf();
+					});
+					
+					/**
+					 * Update all current configured classes
+					 */
+					if (class_conf_to_update.isEmpty() == false) {
+						if (log.isTraceEnabled()) {
+							log.trace("Update previously configured classes " + class_conf_to_update);
+						} else if (log.isDebugEnabled()) {
+							log.debug("Update previously configured classes " + class_conf_to_update.keySet());
+						}
+						
+						class_conf_to_update.forEach((c_e, new_class_configuration) -> {
+							if (log.isDebugEnabled()) {
+								if (log.isTraceEnabled()) {
+									log.trace("Update all configured instances for " + c_e + " with conf " + new_class_configuration);
+								} else {
+									log.debug("Update all configured instances for " + c_e);
+								}
+							}
+							c_e.updateInstances(new_class_configuration);
+						});
 					}
-					c_e.updateInstances(new_class_configuration);
-				});
+				}
 			}
 		}
 		
@@ -336,7 +333,7 @@ public class ConfigurationUtility {
 		
 		private ConfigurationFile(File linked_file) {
 			this.linked_file = linked_file;
-			last_update_date = linked_file.lastModified();
+			last_update_date = 0;
 			config_tree_by_class = new HashMap<>();
 		}
 		
@@ -344,13 +341,15 @@ public class ConfigurationUtility {
 			return last_update_date != linked_file.lastModified();
 		}
 		
+		private void switchUpdateDate() {
+			last_update_date = linked_file.lastModified();
+		}
+		
 		/**
 		 * Don't update/sync main class config list, only reverberate real files content to Json trees.
 		 * @return set/updated class conf
 		 */
 		List<Class<?>> parseFile() throws IOException {
-			last_update_date = linked_file.lastModified();
-			
 			log.debug("Open conf file: " + linked_file);
 			HashMap<String, JsonObject> raw_file_content = ConfigurationFileType.getTypeByFilename(linked_file).getContent(linked_file);
 			
@@ -397,7 +396,11 @@ public class ConfigurationUtility {
 		}
 		
 		public String toString() {
-			return linked_file.getPath() + ", updated " + Logtoolkit.dateLog(last_update_date) + " (" + config_tree_by_class.size() + " classes)";
+			if (last_update_date == 0) {
+				return linked_file.getPath() + ", just detected, (" + config_tree_by_class.size() + " classes)";
+			} else {
+				return linked_file.getPath() + ", updated " + Logtoolkit.dateLog(last_update_date) + " (" + config_tree_by_class.size() + " classes)";
+			}
 		}
 		
 	}

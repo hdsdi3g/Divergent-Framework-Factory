@@ -32,6 +32,9 @@
 	<logger name="tv.hd3g">
 		<level value="INFO" />
 	</logger>
+	<logger name="tv.hd3g.divergentframework.factory.configuration.ConfigurationUtility">
+		<level value="TRACE" />
+	</logger>
 
 	<!-- Global/defalut definition, and level filter for some lib like Astyanax, Elasticsearch, Play... -->
 	<root>
