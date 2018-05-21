@@ -17,6 +17,8 @@
 package tv.hd3g.divergentframework.factory.configuration;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.util.Properties;
 
 import org.apache.commons.io.FileUtils;
 
@@ -26,6 +28,7 @@ import junit.framework.TestCase;
 import tv.hd3g.divergentframework.factory.Factory;
 import tv.hd3g.divergentframework.factory.GsonKit;
 import tv.hd3g.divergentframework.factory.configuration.demo.SingleCar;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub;
 
 public class ConfigurationUtilityTest extends TestCase {
 	
@@ -48,9 +51,10 @@ public class ConfigurationUtilityTest extends TestCase {
 		
 		conf_u.addConfigurationFilesToInternalList(temp_conf_file);
 		
-		conf_u.scanAndImportFiles();
+		conf_u.scanImportedFilesAndUpdateConfigurations();
 		
 		assertTrue(conf_u.isClassIsConfigured(SingleCar.class));
+		assertFalse(conf_u.isClassIsConfigured(TMainSub.class));
 		
 		SingleCar car = new SingleCar();
 		
@@ -74,7 +78,7 @@ public class ConfigurationUtilityTest extends TestCase {
 		
 		FileUtils.write(temp_conf_file, gson.getGsonPretty().toJson(conf_root), "UTF-8");
 		
-		conf_u.scanAndImportFiles();
+		conf_u.scanImportedFilesAndUpdateConfigurations();
 		
 		assertEquals("blue", car.getColor());
 		assertEquals(2.0f, car.getSize());
@@ -82,7 +86,53 @@ public class ConfigurationUtilityTest extends TestCase {
 		temp_conf_file.delete();
 	}
 	
-	/* TODO test ConfigurationUtility: conf_u.loadMnemonicClassNameListFromFile(conf_file);
-	*/
+	public void testMnemonic() throws Exception {
+		Factory factory = new Factory();
+		ConfigurationUtility conf_u = new ConfigurationUtility(factory);
+		
+		/**
+		 * Create conf file, save it
+		 */
+		JsonObject conf_root = new JsonObject();
+		JsonObject conf_tree = new JsonObject();
+		conf_tree.addProperty("color", "red");
+		conf_tree.addProperty("size", 55);
+		conf_root.add(SingleCar.class.getSimpleName().toLowerCase(), conf_tree);
+		
+		File temp_conf_file = File.createTempFile(ConfigurationUtilityTest.class.getSimpleName().toLowerCase(), ".json");
+		GsonKit gson = factory.createGsonKit();
+		FileUtils.write(temp_conf_file, gson.getGsonPretty().toJson(conf_root), "UTF-8");
+		
+		/**
+		 * Create mnemonic file, save it
+		 */
+		Properties mnemonic_class_name_list = new Properties();
+		mnemonic_class_name_list.setProperty(SingleCar.class.getSimpleName().toLowerCase(), SingleCar.class.getName());
+		
+		File temp_mnemonic_file = File.createTempFile(ConfigurationUtilityTest.class.getSimpleName().toLowerCase(), ".properties");
+		FileOutputStream out = new FileOutputStream(temp_mnemonic_file);
+		mnemonic_class_name_list.store(out, "");
+		out.close();
+		
+		conf_u.loadMnemonicClassNameListFromFile(temp_mnemonic_file);
+		
+		conf_u.addConfigurationFilesToInternalList(temp_conf_file);
+		
+		conf_u.scanImportedFilesAndUpdateConfigurations();
+		
+		assertTrue(conf_u.isClassIsConfigured(SingleCar.class));
+		assertFalse(conf_u.isClassIsConfigured(TMainSub.class));
+		
+		SingleCar car = new SingleCar();
+		
+		assertNull(car.getColor());
+		assertEquals(0f, car.getSize());
+		
+		conf_u.addNewClassInstanceToConfigure(car, SingleCar.class);
+		
+		assertEquals("red", car.getColor());
+		assertEquals(55.0f, car.getSize());
+		
+	}
 	
 }

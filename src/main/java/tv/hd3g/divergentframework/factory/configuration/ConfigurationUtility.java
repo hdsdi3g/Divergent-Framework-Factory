@@ -44,7 +44,7 @@ import tv.hd3g.divergentframework.factory.Logtoolkit;
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// TODO3 add *regular* watcher
+	// TODO add -regular- watcher
 	
 	private final Factory factory;
 	private final GsonKit gson_kit;
@@ -88,7 +88,7 @@ public class ConfigurationUtility {
 	
 	/**
 	 * Before set configuration files.
-	 * @param file is properties file syntax.
+	 * @param file is a properties file. Syntax: short_name=full_class_name
 	 * @return this
 	 */
 	public ConfigurationUtility loadMnemonicClassNameListFromFile(File conf_file) throws IOException {
@@ -100,7 +100,7 @@ public class ConfigurationUtility {
 			throw new FileNotFoundException(conf_file + " is not a file");
 		}
 		
-		log.debug("Load mnemonic conf file " + conf_file);
+		log.info("Load mnemonic conf file " + conf_file);
 		
 		Properties p = new Properties();
 		FileInputStream fis = new FileInputStream(conf_file);
@@ -161,7 +161,7 @@ public class ConfigurationUtility {
 	 * With watched_configuration_files_and_dirs, update content and internal content of configuration_files. Do regulary this.
 	 * @return this
 	 */
-	public ConfigurationUtility scanAndImportFiles() {
+	public ConfigurationUtility scanImportedFilesAndUpdateConfigurations() {
 		synchronized (watched_configuration_files_and_dirs) {
 			List<File> last_current_founded_files = watched_configuration_files_and_dirs.stream().flatMap(file -> {
 				if (file.isFile()) {
@@ -405,14 +405,14 @@ public class ConfigurationUtility {
 		
 	}
 	
-	boolean isClassIsConfigured(Class<?> reference_class) {
+	public boolean isClassIsConfigured(Class<?> reference_class) {
 		return configured_types.containsKey(reference_class);
 	}
 	
 	/**
 	 * @param target_class do nothing if it's not configured.
 	 */
-	<T> void addNewClassInstanceToConfigure(T instance_to_configure, Class<T> target_class) {
+	public <T> void addNewClassInstanceToConfigure(T instance_to_configure, Class<T> target_class) {
 		if (isClassIsConfigured(target_class) == false) {
 			return;
 		}

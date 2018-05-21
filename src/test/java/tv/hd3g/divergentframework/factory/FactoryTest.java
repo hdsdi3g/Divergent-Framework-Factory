@@ -16,9 +16,15 @@
 */
 package tv.hd3g.divergentframework.factory;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import javax.script.ScriptException;
+
+import org.apache.commons.io.FileUtils;
+
+import com.google.gson.JsonObject;
 
 import junit.framework.TestCase;
 import tv.hd3g.divergentframework.factory.configuration.demo.SingleCar;
@@ -41,20 +47,6 @@ public class FactoryTest extends TestCase {
 		assertNull(sc.getPoints_by_names());
 	}
 	
-	public void testFactoryWithConf() throws ReflectiveOperationException, IOException, ScriptException {
-		// TODO3 push conf here
-		
-		Factory f = new Factory();
-		
-		SingleCar sc = f.create(SingleCar.class);
-		
-		assertNull(sc.getColor());
-		assertNull(sc.getPossible_wheel_type());
-		assertNull(sc.getPassager_names());
-		assertNull(sc.getPoints_by_names());
-		// TODO3 and test conf it
-	}
-	
 	public void testInterfaceImpl() throws ReflectiveOperationException, IOException, ScriptException {
 		Factory f = new Factory();
 		f.getJsToolkit().setVerboseErrors(System.err);
@@ -75,7 +67,8 @@ public class FactoryTest extends TestCase {
 		System.out.println(FactoryTest.class.getResource("SimpleInterfaceImpl.js"));
 		
 	}
-	// TODO2 test callbacks (first, before next, after next)
+	
+	// T O D O test callbacks (first, before next, after next)
 	
 	public void testSingleInstance() throws Exception {
 		Factory f = new Factory();
@@ -98,4 +91,42 @@ public class FactoryTest extends TestCase {
 		assertNotSame(single, single_3rd);
 		assertNotSame(single.counter, single_3rd.counter);
 	}
+	
+	public void testInitEmptyFactory() throws Exception {
+		new Factory();
+		
+		File directory_configuration = Files.createTempDirectory(FactoryTest.class.getSimpleName() + "_configuration").toFile();
+		File jsbindmap_file = File.createTempFile(FactoryTest.class.getSimpleName(), ".properties");
+		File class_mnemonics_file = File.createTempFile(FactoryTest.class.getSimpleName(), ".properties");
+		
+		new Factory(directory_configuration, jsbindmap_file, class_mnemonics_file);
+	}
+	
+	public void testFactoryWithConf() throws ReflectiveOperationException, IOException, ScriptException {
+		Factory f = new Factory();
+		
+		/**
+		 * Create conf file, save it, load it.
+		 */
+		JsonObject conf_root = new JsonObject();
+		JsonObject conf_tree = new JsonObject();
+		conf_tree.addProperty("color", "blue");
+		conf_tree.addProperty("size", 1);
+		conf_root.add(SingleCar.class.getName(), conf_tree);
+		
+		File temp_conf_file = File.createTempFile(FactoryTest.class.getSimpleName().toLowerCase(), ".json");
+		GsonKit gson = f.createGsonKit();
+		FileUtils.write(temp_conf_file, gson.getGsonPretty().toJson(conf_root), "UTF-8");
+		
+		f.getConfigurator().addConfigurationFilesToInternalList(temp_conf_file).scanImportedFilesAndUpdateConfigurations();
+		
+		/**
+		 * Create object with injected conf
+		 */
+		SingleCar sc = f.create(SingleCar.class);
+		
+		assertEquals("blue", sc.getColor());
+		assertEquals(1f, sc.getSize());
+	}
+	
 }

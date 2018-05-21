@@ -17,6 +17,8 @@
 package tv.hd3g.divergentframework.factory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -82,8 +84,57 @@ public class Factory {
 		bind_map = new Properties();
 		lock = new Object();
 		single_instances = new ConcurrentHashMap<>();
+		configurator = new ConfigurationUtility(this);
+	}
+	
+	/**
+	 * Shortcut for import configurations.
+	 * @param directory_configuration import all *.{json|yaml|ini|properties} files as configuration files.
+	 * @param jsbindmap_file as JS bind map properties file.
+	 * @param class_mnemonics_file as java class mnemonic names properties file.
+	 */
+	public Factory(File directory_configuration, File jsbindmap_file, File class_mnemonics_file) throws IOException {
+		this();
 		
-		configurator = new ConfigurationUtility(this);// TODO2 init ?
+		if (directory_configuration == null) {
+			throw new NullPointerException("\"directory_configuration\" can't to be null");
+		} else if (directory_configuration.exists() == false) {
+			throw new FileNotFoundException(directory_configuration + " can't to be found");
+		} else if (directory_configuration.isDirectory() == false) {
+			throw new FileNotFoundException(directory_configuration + " is not a directory");
+		} else if (directory_configuration.canRead() == false) {
+			throw new IOException(directory_configuration + " can't to be read");
+		}
+		
+		if (jsbindmap_file == null) {
+			throw new NullPointerException("\"jsbindmap_file\" can't to be null");
+		} else if (jsbindmap_file.exists() == false) {
+			throw new FileNotFoundException(jsbindmap_file + " can't to be found");
+		} else if (jsbindmap_file.isFile() == false) {
+			throw new FileNotFoundException(jsbindmap_file + " is not a regular file");
+		} else if (jsbindmap_file.canRead() == false) {
+			throw new IOException(jsbindmap_file + " can't to be read");
+		} else if (directory_configuration.getCanonicalFile().equals(jsbindmap_file.getCanonicalFile().getParentFile())) {
+			throw new IOException(jsbindmap_file + " (jsbindmap_file) can't to be put in directory_configuration directory (" + directory_configuration + ")");
+		}
+		
+		FileInputStream fis = new FileInputStream(jsbindmap_file);
+		bind_map.load(fis);
+		fis.close();
+		
+		if (class_mnemonics_file == null) {
+			throw new NullPointerException("\"class_mnemonics_file\" can't to be null");
+		} else if (class_mnemonics_file.exists() == false) {
+			throw new FileNotFoundException(class_mnemonics_file + " can't to be found");
+		} else if (class_mnemonics_file.isFile() == false) {
+			throw new FileNotFoundException(class_mnemonics_file + " is not a regular file");
+		} else if (class_mnemonics_file.canRead() == false) {
+			throw new IOException(class_mnemonics_file + " can't to be read");
+		} else if (directory_configuration.getCanonicalFile().equals(class_mnemonics_file.getCanonicalFile().getParentFile())) {
+			throw new IOException(class_mnemonics_file + " (class_mnemonics_file) can't to be put in directory_configuration directory (" + directory_configuration + ")");
+		}
+		
+		configurator.loadMnemonicClassNameListFromFile(class_mnemonics_file).addConfigurationFilesToInternalList(directory_configuration).scanImportedFilesAndUpdateConfigurations();
 	}
 	
 	/**
@@ -201,9 +252,9 @@ public class Factory {
 		@SuppressWarnings("unchecked")
 		T result = (T) constructor.newInstance();
 		
-		/*if (false) {
-			// TODO3 check if this *class* is configured >> ConfigurationUtility
-		}*/
+		if (configurator.isClassIsConfigured(from_class)) {
+			configurator.addNewClassInstanceToConfigure(result, from_class);
+		}
 		
 		return result;
 	}
