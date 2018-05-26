@@ -18,6 +18,7 @@ package tv.hd3g.divergentframework.factory.watchfolder;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.Thread.State;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
@@ -89,10 +90,15 @@ public class WatchfolderService {
 		}).findFirst();
 	}
 	
-	public WatchedDirectory watchDirectory(File directory, boolean callback_in_first_scan, long file_event_retention_time, TimeUnit unit) throws IOException {
+	// TODO trace activity !
+	
+	public WatchedDirectory watchDirectory(File directory, WatchfolderPolicy policy, boolean callback_in_first_scan, long file_event_retention_time, TimeUnit unit) throws IOException {
 		if (directory == null) {
 			throw new NullPointerException("\"directory\" can't to be null");
+		} else if (policy == null) {
+			throw new NullPointerException("\"policy\" can't to be null");
 		}
+		
 		File new_directory = directory.getCanonicalFile();
 		
 		synchronized (watched_directory_list) {
@@ -101,7 +107,7 @@ public class WatchfolderService {
 			if (o_previously_added_watched_directory.isPresent()) {
 				return o_previously_added_watched_directory.get();
 			} else {
-				WatchedDirectory new_watched_directory = new WatchedDirectory(new_directory, callback_in_first_scan, unit.toMillis(file_event_retention_time), this);
+				WatchedDirectory new_watched_directory = new WatchedDirectory(new_directory, policy, callback_in_first_scan, unit.toMillis(file_event_retention_time), this);
 				watched_directory_list.add(new_watched_directory);
 				return new_watched_directory;
 			}
@@ -145,8 +151,14 @@ public class WatchfolderService {
 		if (service.isAlive() == false) {
 			return this;
 		}
+		log.info("Ask to stop all watchfolder(s)");
 		
 		want_to_stop = true;
+		
+		if (service.getState() == State.WAITING) {
+			service.interrupt();
+		}
+		
 		while (service.isAlive()) {
 			Thread.onSpinWait();
 		}

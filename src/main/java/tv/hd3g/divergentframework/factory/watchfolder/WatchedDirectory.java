@@ -37,12 +37,13 @@ public class WatchedDirectory {
 	private final WatchfolderService service;
 	private final boolean callback_in_first_scan;
 	private final File observed_directory;
+	private final WatchfolderPolicy policy;
 	
 	private long file_event_retention_time;
 	private volatile boolean scan_in_hidden_dirs;
 	private volatile boolean scan_in_symboliclink_dirs;
 	
-	WatchedDirectory(File observed_directory, boolean callback_in_first_scan, long file_event_retention_time, WatchfolderService service) throws IOException {
+	WatchedDirectory(File observed_directory, WatchfolderPolicy policy, boolean callback_in_first_scan, long file_event_retention_time, WatchfolderService service) throws IOException {
 		if (observed_directory == null) {
 			throw new NullPointerException("\"observed_directory\" can't to be null");
 		} else if (observed_directory.exists() == false) {
@@ -54,12 +55,21 @@ public class WatchedDirectory {
 		}
 		this.observed_directory = observed_directory.getCanonicalFile();
 		
+		this.policy = policy;
+		this.service = service;
+		if (service == null) {
+			throw new NullPointerException("\"service\" can't to be null");
+		}
+		
 		callbacks = new ArrayList<>();
 		this.callback_in_first_scan = callback_in_first_scan;
-		this.service = service;
 		this.file_event_retention_time = file_event_retention_time;
 		scan_in_hidden_dirs = false;
 		scan_in_symboliclink_dirs = true;
+	}
+	
+	public String toString() {
+		return "Watch \"" + observed_directory + "\"";
 	}
 	
 	public synchronized WatchedDirectory setFileEventRetentionTime(long retention_time, TimeUnit unit) {
@@ -92,6 +102,8 @@ public class WatchedDirectory {
 	public File getObservedDirectory() {
 		return observed_directory;
 	}
+	
+	// TODO trace activity !
 	
 	private void asyncRecursiveScan(File directory, Consumer<File> onFile, Consumer<File> onDir) {
 		service.getExecutor().execute(() -> {
@@ -157,7 +169,6 @@ public class WatchedDirectory {
 		}
 	}
 	
-	// TODO use policy
 	// TODO2 switch in internal/external (with db)
 	
 	void onEvent(File event_file, EventKind kind) {
@@ -211,7 +222,17 @@ public class WatchedDirectory {
 	}
 	
 	private void asyncDispatchEvent(File validated_event_file, EventKind kind) {
-		log.debug("File activity " + validated_event_file + " (" + kind + ")");
+		try {
+			if (policy.internalApplyFilter(validated_event_file, this, kind) == false) {
+				log.debug("File activity, but not in policy: " + validated_event_file + " (" + kind + ")");
+				return;
+			}
+		} catch (IOException e) {
+			log.error("Can't validate file " + validated_event_file, e);
+			return;
+		}
+		
+		log.debug("File activity: " + validated_event_file + " (" + kind + ")");
 		
 		callbacks.forEach(c -> {
 			service.getExecutor().execute(() -> {

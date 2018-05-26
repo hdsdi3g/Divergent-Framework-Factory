@@ -23,13 +23,13 @@ public enum EventKind {
 	
 	CREATE, MODIFY, DELETE, FIRST_DETECTION;
 	
-	public static EventKind onWatchEvent(WatchEvent.Kind<?> kind) {
+	static EventKind onWatchEvent(WatchEvent.Kind<?> kind) {
 		if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
 			return CREATE;
 		} else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
-			return MODIFY;
-		} else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
 			return DELETE;
+		} else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+			return MODIFY;
 		}
 		return null;
 	}
