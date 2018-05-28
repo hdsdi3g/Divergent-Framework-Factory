@@ -20,6 +20,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.io.FileUtils;
 
@@ -28,30 +29,34 @@ import junit.framework.TestCase;
 public class TestWatchfolder extends TestCase {
 	
 	public void testService() throws Exception {
-		WatchfolderService service = new WatchfolderService();
 		
-		File directory = Files.createTempDirectory("test-watchfolder").toFile().getCanonicalFile();
+		File observed_directory = Files.createTempDirectory("test-watchfolder").toFile().getCanonicalFile();
 		
-		WatchedDirectory w_d = service.watchDirectory(directory, new WatchfolderPolicy().setupRegularFiles(false), false, 0, TimeUnit.MILLISECONDS);
+		WatchFolder wf = new WatchFolder().setObservedDirectory(observed_directory).setFileDetectionTime(10, TimeUnit.MILLISECONDS).setScanPeriod(1, TimeUnit.SECONDS);
 		
-		assertEquals(directory, w_d.getObservedDirectory());
-		assertEquals(0, w_d.getFileEventRetentionTime(TimeUnit.MILLISECONDS));
-		assertFalse(w_d.isScanInHiddenDirs());
-		assertTrue(w_d.isScanInSymboliclinkDirs());
+		assertEquals(observed_directory, wf.getObservedDirectory());
+		assertEquals(1, wf.getScanPeriod(TimeUnit.SECONDS));
+		assertEquals(10, wf.getFileDetectionTime(TimeUnit.MILLISECONDS));
+		assertFalse(wf.isScanInHiddenDirs());
+		assertTrue(wf.isScanInSymboliclinkDirs());
+		assertTrue(wf.isCallbackInFirstScan());
 		
-		WatchfolderEvent event = (observed_directory, activity_on_file, kind, detected_by) -> {
-			System.out.println(kind);// XXX
-		};
-		w_d.registerEventCallback(event);
-		service.start();
+		AtomicBoolean detect_ok = new AtomicBoolean(false);
+		wf.registerCallback((root, activity_on_file, kind, detected_by) -> {
+			System.out.println(activity_on_file.getPath() + "\t" + kind);
+			detect_ok.set(true);
+		});
 		
-		FileUtils.write(new File(directory.getPath() + File.separator + "testfile.txt"), "Just a test, you can delete it\r\n", StandardCharsets.UTF_8);
+		FileUtils.write(new File(observed_directory.getPath() + File.separator + "testfile.txt"), "Just a test, you can delete it\r\n", StandardCharsets.UTF_8);
 		
-		service.stop();
+		while (detect_ok.get() == false) {
+			Thread.onSpinWait();
+		}
 		
-		FileUtils.forceDelete(directory);
+		// FIXME no FIRST_DETECTION ! (double Update directory pass)
+		
+		FileUtils.forceDelete(observed_directory);
 	}
 	
-	// XXX test callback_in_first_scan == true
-	// XXX test file_event_retention_time > 0
+	// test callback_in_first_scan == true
 }

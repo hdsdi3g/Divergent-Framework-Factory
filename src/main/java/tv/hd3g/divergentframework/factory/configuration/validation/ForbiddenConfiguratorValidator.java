@@ -14,10 +14,20 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.watchfolder;
+package tv.hd3g.divergentframework.factory.configuration.validation;
 
-public enum EventKind {
+import java.util.function.Predicate;
+
+import com.google.gson.JsonElement;
+
+/**
+ * Always refuse new values.
+ */
+public class ForbiddenConfiguratorValidator extends DefaultValidator {
 	
-	CREATE, MODIFY, DELETE, FIRST_DETECTION;
-
+	public Predicate<JsonElement> getValidator() {
+		return t -> {
+			return false;
+		};
+	}
 }

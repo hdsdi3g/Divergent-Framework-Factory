@@ -406,4 +406,6 @@ public class Factory {
 		return configurator;
 	}
 	
+	// TODO create new watchfolder
+	
 }

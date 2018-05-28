@@ -14,13 +14,30 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.watchfolder;
+package tv.hd3g.divergentframework.factory.configuration.validation;
 
 import java.io.File;
+import java.util.function.Predicate;
 
-@FunctionalInterface
-public interface WatchfolderEvent {
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
+public class FileIsDirectoryAndExistsValidator extends NotNullValidator {
 	
-	void onEvent(File observed_directory, File activity_on_file, EventKind kind, WatchFolder detected_by);
-	
+	public Predicate<JsonElement> getValidator() {
+		return super.getValidator().and(t -> {
+			if (t.isJsonPrimitive() == false) {
+				return false;
+			}
+			
+			JsonPrimitive jp = t.getAsJsonPrimitive();
+			if (jp.isString() == false) {
+				return false;
+			}
+			
+			File f = new File(jp.getAsString());
+			
+			return f.exists() && f.isDirectory() && f.canRead();
+		});
+	}
 }

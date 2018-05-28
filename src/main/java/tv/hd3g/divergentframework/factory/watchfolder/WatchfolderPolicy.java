@@ -63,7 +63,7 @@ public class WatchfolderPolicy {
 	/**
 	 * Ignored for directories
 	 */
-	public boolean must_can_execute_file = true;
+	public boolean must_can_execute_file = false;
 	
 	public boolean symlink = true;
 	
@@ -94,7 +94,7 @@ public class WatchfolderPolicy {
 	 * Delta with now
 	 * Inclusive
 	 */
-	public long max_age = Long.MAX_VALUE;
+	public long max_age = Long.MAX_VALUE / 2;
 	
 	/**
 	 * Empty/null = ignore
@@ -150,17 +150,17 @@ public class WatchfolderPolicy {
 	 * Free feel to bypass this.
 	 * Called after all tests
 	 */
-	public boolean specificFilter(File f, WatchedDirectory detector, EventKind kind) {
+	public boolean specificFilter(File f, WatchFolder detector, EventKind kind) {
 		return true;
 	}
 	
-	private static final void l(String reason, File f, WatchedDirectory detector) {
-		if (log.isTraceEnabled() == false) {
-			log.trace("File not pass policy \"" + f.getPath() + "\" [" + reason + "] from " + detector);
+	private static final void l(String reason, File f, WatchFolder detector) {
+		if (log.isTraceEnabled()) {
+			log.trace("File not pass policy \"" + f.getPath().substring(detector.getObservedDirectory().getPath().length()) + "\" [" + reason + "] from " + detector);
 		}
 	}
 	
-	final boolean internalApplyFilter(File f, WatchedDirectory detector, EventKind kind) throws IOException {
+	final boolean internalApplyFilter(File f, WatchFolder detector, EventKind kind) throws IOException {
 		if (f.isDirectory() & directories == false) {
 			l("Can't accept directories", f, detector);
 			return false;
@@ -209,28 +209,28 @@ public class WatchfolderPolicy {
 			}
 		}
 		
-		if (checkCompliance(white_list_file_name, ext -> ext.equalsIgnoreCase(f.getName())) == false) {
+		if (checkCompliance(white_list_file_name, false, ext -> ext.equalsIgnoreCase(f.getName()))) {
 			l("Can't pass white_list_file_name", f, detector);
 			return false;
-		} else if (checkCompliance(black_list_file_name, ext -> ext.equalsIgnoreCase(f.getName()))) {
+		} else if (checkCompliance(black_list_file_name, true, ext -> ext.equalsIgnoreCase(f.getName()))) {
 			l("Can't pass black_list_file_name", f, detector);
 			return false;
-		} else if (checkCompliance(white_list_file_extention, ext -> ext.equalsIgnoreCase(FilenameUtils.getExtension(f.getName()))) == false) {
+		} else if (checkCompliance(white_list_file_extention, false, ext -> ext.equalsIgnoreCase(FilenameUtils.getExtension(f.getName())))) {
 			l("Can't pass white_list_file_extention", f, detector);
 			return false;
-		} else if (checkCompliance(black_list_file_extention, ext -> ext.equalsIgnoreCase(FilenameUtils.getExtension(f.getName())))) {
+		} else if (checkCompliance(black_list_file_extention, true, ext -> ext.equalsIgnoreCase(FilenameUtils.getExtension(f.getName())))) {
 			l("Can't pass black_list_file_extention", f, detector);
 			return false;
-		} else if (checkCompliance(white_list_file_name_prefix, prefix -> f.getName().toLowerCase().startsWith(prefix.toLowerCase())) == false) {
+		} else if (checkCompliance(white_list_file_name_prefix, false, prefix -> f.getName().toLowerCase().startsWith(prefix.toLowerCase()))) {
 			l("Can't pass white_list_file_name_prefix", f, detector);
 			return false;
-		} else if (checkCompliance(black_list_file_name_prefix, prefix -> f.getName().toLowerCase().startsWith(prefix.toLowerCase()))) {
+		} else if (checkCompliance(black_list_file_name_prefix, true, prefix -> f.getName().toLowerCase().startsWith(prefix.toLowerCase()))) {
 			l("Can't pass black_list_file_name_prefix", f, detector);
 			return false;
-		} else if (checkCompliance(white_list_file_name_suffix, suffix -> FilenameUtils.getBaseName(f.getName()).toLowerCase().endsWith(suffix.toLowerCase())) == false) {
+		} else if (checkCompliance(white_list_file_name_suffix, false, suffix -> FilenameUtils.getBaseName(f.getName()).toLowerCase().endsWith(suffix.toLowerCase()))) {
 			l("Can't pass white_list_file_name_suffix", f, detector);
 			return false;
-		} else if (checkCompliance(black_list_file_name_suffix, suffix -> FilenameUtils.getBaseName(f.getName()).toLowerCase().endsWith(suffix.toLowerCase()))) {
+		} else if (checkCompliance(black_list_file_name_suffix, true, suffix -> FilenameUtils.getBaseName(f.getName()).toLowerCase().endsWith(suffix.toLowerCase()))) {
 			l("Can't pass black_list_file_name_suffix", f, detector);
 			return false;
 		}
@@ -238,14 +238,18 @@ public class WatchfolderPolicy {
 		return specificFilter(f, detector, kind);
 	}
 	
-	private static boolean checkCompliance(List<String> list, Predicate<String> p) {
+	private static boolean checkCompliance(List<String> list, boolean black_list, Predicate<String> p) {
 		if (list == null) {
-			return true;
+			return false;
 		} else if (list.isEmpty()) {
-			return true;
+			return false;
 		}
 		
-		return list.stream().anyMatch(p);
+		if (black_list) {
+			return list.stream().anyMatch(p);
+		} else {
+			return list.stream().noneMatch(p);
+		}
 	}
 	
 }
