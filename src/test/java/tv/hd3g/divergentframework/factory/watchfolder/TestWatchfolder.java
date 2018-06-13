@@ -40,6 +40,7 @@ public class TestWatchfolder extends TestCase {
 		assertFalse(wf.isScanInHiddenDirs());
 		assertTrue(wf.isScanInSymboliclinkDirs());
 		assertTrue(wf.isCallbackInFirstScan());
+		assertFalse(wf.isClosed());
 		
 		AtomicBoolean detect_ok = new AtomicBoolean(false);
 		wf.registerCallback((root, activity_on_file, kind, detected_by) -> {
@@ -58,5 +59,9 @@ public class TestWatchfolder extends TestCase {
 		FileUtils.forceDelete(observed_directory);
 	}
 	
-	// test callback_in_first_scan == true
+	// TODO test callback_in_first_scan == true
+	
+	// TODO test stop
+	// TODO test push conf twice
+	
 }

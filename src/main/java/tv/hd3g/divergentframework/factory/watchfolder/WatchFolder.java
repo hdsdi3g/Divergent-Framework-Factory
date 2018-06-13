@@ -25,7 +25,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -52,7 +54,9 @@ public class WatchFolder {
 	
 	private final ArrayList<WatchfolderEvent> callbacks;
 	private final ConcurrentHashMap<File, WatchedDirectory> watched_directories; // XXX external storage
-	private final AtomicBoolean pending_update;
+	private final AtomicBoolean pending_configuration_update;
+	@ConfigurableValidator(ForbiddenConfiguratorValidator.class)
+	private volatile boolean closed;
 	
 	@ConfigurableValidator(FileIsDirectoryAndExistsValidator.class)
 	private File observed_directory;
@@ -78,7 +82,7 @@ public class WatchFolder {
 	public WatchFolder() {
 		callbacks = new ArrayList<>();
 		watched_directories = new ConcurrentHashMap<>();
-		pending_update = new AtomicBoolean(false);
+		pending_configuration_update = new AtomicBoolean(false);
 		
 		policy = new WatchfolderPolicy().setupRegularFiles(false);
 		file_detection_time = 1000;
@@ -87,6 +91,8 @@ public class WatchFolder {
 		scan_in_symboliclink_dirs = true;
 		search_in_subfolders = true;
 		callback_in_first_scan = true;
+		
+		closed = false;
 		
 		executor = new ThreadPoolExecutor(1, 1, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 		executor.setThreadFactory(r -> {
@@ -110,19 +116,30 @@ public class WatchFolder {
 	 * On the first push, start watchfolder
 	 */
 	public synchronized WatchFolder registerCallback(WatchfolderEvent callback) {
-		if (callbacks.contains(callback) == false) {
-			callbacks.add(callback);
-			
-			if (callbacks.size() == 1) {
-				executor.execute(() -> {
-					while (pending_update.get()) {
-						Thread.onSpinWait();
-					}
-					pushNewDirectory(observed_directory, true);
-				});
-			}
+		if (closed) {
+			throw new RuntimeException("Closed watchfolder for " + observed_directory);
+		} else if (callbacks.contains(callback)) {
+			return this;
+		}
+		
+		callbacks.add(callback);
+		
+		if (callbacks.size() == 1) {
+			executor.execute(() -> {
+				if (closed) {
+					return;
+				}
+				while (pending_configuration_update.get()) {
+					Thread.onSpinWait();
+				}
+				pushNewDirectory(observed_directory, true);
+			});
 		}
 		return this;
+	}
+	
+	public boolean isClosed() {
+		return closed;
 	}
 	
 	public synchronized boolean unRegisterCallback(WatchfolderEvent callback) {
@@ -193,117 +210,129 @@ public class WatchFolder {
 			this.first_scan = false;
 		}
 		
+		CompletableFuture<Void> cancelNextScan() {
+			synchronized (directory) {
+				if (pending_next_update == null) {
+					return CompletableFuture.completedFuture(null);
+				}
+				
+				return CompletableFuture.runAsync(() -> {
+					pending_next_update.cancel(false);
+					
+					while (pending_next_update.isDone() == false) {
+						Thread.onSpinWait();
+					}
+				});
+			}
+		}
+		
 		void update() {
-			// if (System.currentTimeMillis() - scan_period < last_update_date) {
-			// return;
-			// }
-			
-			// last_update_date = System.currentTimeMillis();
-			
 			if (directory.exists() == false) {
 				cancelOldDirectory(directory);
 				return;
 			}
 			
-			log.trace("Update directory " + computeRelativeName(directory) + " in " + internalToString());
-			
-			Set<File> actual_items_in_dir = Arrays.asList(directory.listFiles()).stream().filter(f -> {
-				if (f.isDirectory() == false) {
-					/**
-					 * Files are always welcome.
-					 */
-					return true;
-				}
+			synchronized (directory) {
+				log.trace("Update directory " + computeRelativeName(directory) + " in " + internalToString());
 				
-				if (search_in_subfolders == false) {
-					return false;
-				}
-				
-				/**
-				 * Remove "bad" directories
-				 */
-				if (scan_in_hidden_dirs == false) {
-					if (f.isHidden() | f.getName().startsWith(".")) {
+				Set<File> actual_items_in_dir = Arrays.asList(directory.listFiles()).stream().filter(f -> {
+					if (f.isDirectory() == false) {
+						/**
+						 * Files are always welcome.
+						 */
+						return true;
+					}
+					
+					if (search_in_subfolders == false) {
 						return false;
 					}
-				} else if (scan_in_symboliclink_dirs == false) {
-					try {
-						BasicFileAttributes attrs = Files.readAttributes(f.toPath(), BasicFileAttributes.class);
-						if (attrs.isSymbolicLink()) {
+					
+					/**
+					 * Remove "bad" directories
+					 */
+					if (scan_in_hidden_dirs == false) {
+						if (f.isHidden() | f.getName().startsWith(".")) {
 							return false;
 						}
+					} else if (scan_in_symboliclink_dirs == false) {
+						try {
+							BasicFileAttributes attrs = Files.readAttributes(f.toPath(), BasicFileAttributes.class);
+							if (attrs.isSymbolicLink()) {
+								return false;
+							}
+						} catch (IOException e) {
+							throw new RuntimeException("Can't read attributes for \"" + f + "\"", e);
+						}
+					}
+					
+					if (f.canRead() == false) {
+						log.debug("Can't read \"" + f + "\"");
+						return false;
+					} else if (f.canExecute() == false) {
+						log.debug("Can't read (execute) \"" + f + "\"");
+						return false;
+					}
+					return true;
+				}).map(f -> {
+					try {
+						return f.getCanonicalFile();
 					} catch (IOException e) {
-						throw new RuntimeException("Can't read attributes for \"" + f + "\"", e);
+						if (f.isDirectory()) {
+							cancelOldDirectory(f);
+						}
+						throw new RuntimeException("Can't access to " + f, e);
 					}
-				}
+				}).collect(Collectors.toSet());
 				
-				if (f.canRead() == false) {
-					log.debug("Can't read \"" + f + "\"");
-					return false;
-				} else if (f.canExecute() == false) {
-					log.debug("Can't read (execute) \"" + f + "\"");
-					return false;
-				}
-				return true;
-			}).map(f -> {
-				try {
-					return f.getCanonicalFile();
-				} catch (IOException e) {
-					if (f.isDirectory()) {
-						cancelOldDirectory(f);
+				/**
+				 * Compute deltas
+				 */
+				List<File> added_item_list = actual_items_in_dir.stream().filter(f -> {
+					return items.stream().noneMatch(item -> item.item.equals(f));
+				}).collect(Collectors.toList());
+				
+				List<WatchedFile> deleted_item_list = items.stream().filter(item -> {
+					return actual_items_in_dir.contains(item.item) == false;
+				}).collect(Collectors.toList());
+				
+				/*List<WatchedFile> modified_item_list = items.stream().filter(item -> {
+					return actual_items_in_dir.contains(item.item);
+				}).filter(item -> {
+					return item.hasChanged();
+				}).collect(Collectors.toList());*/
+				
+				/**
+				 * Commit deltas
+				 */
+				items.removeAll(deleted_item_list);
+				deleted_item_list.forEach(item -> {
+					asyncDispatchEvent(item.item, EventKind.DELETE);
+					if (item.is_directory) {
+						cancelOldDirectory(item.item);
 					}
-					throw new RuntimeException("Can't access to " + f, e);
-				}
-			}).collect(Collectors.toSet());
-			
-			/**
-			 * Compute deltas
-			 */
-			List<File> added_item_list = actual_items_in_dir.stream().filter(f -> {
-				return items.stream().noneMatch(item -> item.item.equals(f));
-			}).collect(Collectors.toList());
-			
-			List<WatchedFile> deleted_item_list = items.stream().filter(item -> {
-				return actual_items_in_dir.contains(item.item) == false;
-			}).collect(Collectors.toList());
-			
-			/*List<WatchedFile> modified_item_list = items.stream().filter(item -> {
-				return actual_items_in_dir.contains(item.item);
-			}).filter(item -> {
-				return item.hasChanged();
-			}).collect(Collectors.toList());*/
-			
-			/**
-			 * Commit deltas
-			 */
-			items.removeAll(deleted_item_list);
-			deleted_item_list.forEach(item -> {
-				asyncDispatchEvent(item.item, EventKind.DELETE);
-				if (item.is_directory) {
-					cancelOldDirectory(item.item);
-				}
-			});
-			
-			items.forEach(item -> {
-				item.update(first_scan);
-			});
-			
-			items.addAll(added_item_list.stream().peek(f -> {
-				if (f.isDirectory()) {
-					pushNewDirectory(f, first_scan);
-				}
-			}).map(f -> {
-				return new WatchedFile(f);
-			}).collect(Collectors.toList()));
-			
-			pending_next_update = sch_service.schedule(() -> {
-				try {
-					update();
-				} catch (Exception e) {
-					log.error("Can't update " + directory + ", remove scan on it for " + internalToString(), e);
-					cancelOldDirectory(directory);
-				}
-			}, scan_period, TimeUnit.MILLISECONDS);
+				});
+				
+				items.forEach(item -> {
+					item.update(first_scan);
+				});
+				
+				items.addAll(added_item_list.stream().peek(f -> {
+					if (f.isDirectory()) {
+						pushNewDirectory(f, first_scan);
+					}
+				}).map(f -> {
+					return new WatchedFile(f);
+				}).collect(Collectors.toList()));
+				
+				pending_next_update = sch_service.schedule(() -> {
+					try {
+						update();
+					} catch (Exception e) {
+						log.error("Can't update " + directory + ", remove scan on it for " + internalToString(), e);
+						cancelOldDirectory(directory);
+					}
+				}, scan_period, TimeUnit.MILLISECONDS);
+			}
 		}
 		
 		class WatchedFile {
@@ -397,6 +426,9 @@ public class WatchFolder {
 	}
 	
 	private void asyncDispatchEvent(File validated_event_file, EventKind kind) {
+		if (closed) {
+			return;
+		}
 		if (callback_in_first_scan == false && EventKind.FIRST_DETECTION.equals(kind)) {
 			return;
 		}
@@ -417,6 +449,9 @@ public class WatchFolder {
 		final File dir = observed_directory;
 		callbacks.forEach(c -> {
 			executor.execute(() -> {
+				if (closed) {
+					return;
+				}
 				try {
 					c.onEvent(dir, validated_event_file, kind, this);
 				} catch (Exception e) {
@@ -562,48 +597,30 @@ public class WatchFolder {
 		return this;
 	}
 	
+	/**
+	 * Do a clean stop
+	 */
 	@OnBeforeUpdateConfiguration
 	private void beforeUpdateConfiguration() {
-		pending_update.set(true);
+		pending_configuration_update.set(true);
 		
-		/**
-		 * Cancel all updates
-		 */
-		watched_directories.values().forEach(w_d -> {
-			if (w_d.pending_next_update != null) {
-				w_d.pending_next_update.cancel(false);
-			}
-		});
-		
-		/**
-		 * Wait actives as done
-		 */
-		watched_directories.values().forEach(w_d -> {
-			if (w_d.pending_next_update != null) {
-				while (w_d.pending_next_update.isDone() == false) {
-					Thread.onSpinWait();
-				}
-				w_d.pending_next_update = null;
-			}
-		});
-		
+		stopAllWatchedDirectories();
 	}
 	
 	@OnAfterUpdateConfiguration
 	private void afterUpdateConfiguration() {
-		pending_update.set(false);
+		if (closed) {
+			return;
+		}
+		
+		pending_configuration_update.set(false);
 		
 		if (observed_directory == null) {
 			throw new NullPointerException("observed_directory can't to be null");
-		} else if (watched_directories.mappingCount() < 100) {
-			watched_directories.clear();
-			
-			if (callbacks.isEmpty() == false) {
-				executor.execute(() -> {
-					pushNewDirectory(observed_directory, true);
-				});
-			}
 		} else {
+			/**
+			 * Search the previous parent dir
+			 */
 			File parent = watched_directories.reduceKeys(10_000, (l, r) -> {
 				if (l.getPath().startsWith(r.getPath())) {
 					return r;
@@ -623,10 +640,16 @@ public class WatchFolder {
 				watched_directories.clear();
 				if (callbacks.isEmpty() == false) {
 					executor.execute(() -> {
+						if (closed) {
+							return;
+						}
 						pushNewDirectory(observed_directory, true);
 					});
 				}
 			} else {
+				/**
+				 * Keep the actual path tree, and restart all scans
+				 */
 				watched_directories.values().stream().forEach(w_d -> {
 					w_d.pending_next_update = sch_service.submit(() -> {
 						try {
@@ -642,26 +665,43 @@ public class WatchFolder {
 	}
 	
 	/**
-	 * Will stop internal sch_service and executor.
+	 * Blocking
+	 */
+	private void stopAllWatchedDirectories() {
+		List<CompletableFuture<Void>> cancel_tasks = watched_directories.values().stream().map(watched_dir -> {
+			return watched_dir.cancelNextScan();
+		}).collect(Collectors.toList());
+		
+		if (cancel_tasks.isEmpty()) {
+			return;
+		}
+		
+		@SuppressWarnings("unchecked")
+		CompletableFuture<Void>[] cancel_tasks_array = new CompletableFuture[cancel_tasks.size()];
+		for (int pos = 0; pos < cancel_tasks_array.length; pos++) {
+			cancel_tasks_array[pos] = cancel_tasks.get(pos);
+		}
+		try {
+			CompletableFuture.allOf(cancel_tasks_array).get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw new RuntimeException("Can't cancel some tasks", e);
+		}
+	}
+	
+	/**
+	 * Will no stop internal sch_service and executor, just clean active an current task for this watchfolder.
 	 */
 	@OnBeforeRemovedInConfiguration
-	public synchronized void stop() {
+	public synchronized void close() {
 		log.info("Ask to stop watchfolder " + toString());
 		
-		sch_service.shutdown();
-		try {
-			sch_service.awaitTermination(1000, TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
-			log.warn("Can't wait executor shutdown", e);
-		}
+		closed = true;
 		
-		executor.getQueue().clear();
-		executor.shutdown();
-		try {
-			executor.awaitTermination(1000, TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
-			log.warn("Can't wait executor shutdown", e);
-		}
+		stopAllWatchedDirectories();
+		callbacks.forEach(c -> {
+			c.onStop(observed_directory, this);
+		});
+		callbacks.clear();
 		
 		watched_directories.clear();
 	}

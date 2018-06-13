@@ -21,6 +21,9 @@ import java.io.File;
 @FunctionalInterface
 public interface WatchfolderEvent {
 	
-	void onEvent(File observed_directory, File activity_on_file, EventKind kind, WatchFolder detected_by);
+	public void onEvent(File observed_directory, File activity_on_file, EventKind kind, WatchFolder detected_by);
+	
+	public default void onStop(File observed_directory, WatchFolder detected_by) {
+	}
 	
 }

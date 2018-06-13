@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,6 +48,8 @@ import com.google.gson.JsonPrimitive;
 
 import tv.hd3g.divergentframework.factory.configuration.ConfigurationUtility;
 import tv.hd3g.divergentframework.factory.js.JsToolkit;
+import tv.hd3g.divergentframework.factory.watchfolder.WatchFolder;
+import tv.hd3g.divergentframework.factory.watchfolder.WatchfolderEvent;
 
 /**
  * Create Objects and search Class
@@ -406,6 +409,15 @@ public class Factory {
 		return configurator;
 	}
 	
-	// TODO create new watchfolder
+	/**
+	 * A simple shortcut for WatchFolder creation.
+	 * You should set global executor and sch_service.
+	 */
+	public WatchFolder createNewWatchfolder(File observed_directory, long scan_period, long detection_time, TimeUnit unit, WatchfolderEvent first_callback) throws IOException {
+		WatchFolder w_f = new WatchFolder();
+		w_f.setFileDetectionTime(detection_time, unit).setScanPeriod(scan_period, unit);
+		w_f.setObservedDirectory(observed_directory).registerCallback(first_callback);
+		return w_f;
+	}
 	
 }
