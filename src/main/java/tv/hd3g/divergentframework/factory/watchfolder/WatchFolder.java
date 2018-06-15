@@ -689,7 +689,7 @@ public class WatchFolder {
 	}
 	
 	/**
-	 * Will no stop internal sch_service and executor, just clean active an current task for this watchfolder.
+	 * Will no touch to internal sch_service and executor, just clean active an current task for this watchfolder.
 	 */
 	@OnBeforeRemovedInConfiguration
 	public synchronized void close() {

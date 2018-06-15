@@ -61,6 +61,11 @@ public class WatchfolderPolicy {
 	public boolean must_can_write = false;
 	
 	/**
+	 * If true, delete events will be ignored.
+	 */
+	public boolean must_exists = false;
+	
+	/**
 	 * Ignored for directories
 	 */
 	public boolean must_can_execute_file = false;
@@ -150,7 +155,7 @@ public class WatchfolderPolicy {
 	 * Free feel to bypass this.
 	 * Called after all tests
 	 */
-	public boolean specificFilter(File f, WatchFolder detector, EventKind kind) {
+	public boolean applySpecificFilter(File f, WatchFolder detector, EventKind kind) {
 		return true;
 	}
 	
@@ -170,6 +175,12 @@ public class WatchfolderPolicy {
 		} else if ((f.isHidden() | f.getName().startsWith(".")) & hidden == false) {
 			l("Can't accept hidden", f, detector);
 			return false;
+		} else if (f.exists() == false && kind == EventKind.DELETE) {
+			if (must_exists) {
+				l("Don't throw events on deleted files", f, detector);
+				return false;
+			}
+			return true;
 		} else if (f.canRead() == false & must_can_read) {
 			l("Can't read", f, detector);
 			return false;
@@ -235,7 +246,7 @@ public class WatchfolderPolicy {
 			return false;
 		}
 		
-		return specificFilter(f, detector, kind);
+		return applySpecificFilter(f, detector, kind);
 	}
 	
 	private static boolean checkCompliance(List<String> list, boolean black_list, Predicate<String> p) {
