@@ -30,7 +30,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 
+import com.google.gson.JsonObject;
+
 import junit.framework.TestCase;
+import tv.hd3g.divergentframework.factory.Factory;
 
 public class TestWatchfolder extends TestCase {
 	
@@ -227,7 +230,7 @@ public class TestWatchfolder extends TestCase {
 		FileUtils.forceDelete(observed_directory);
 	}
 	
-	public void testgrowingFile() throws Exception {
+	public void testGrowingFile() throws Exception {
 		File observed_directory = Files.createTempDirectory("test-watchfolder").toFile().getCanonicalFile();
 		
 		WatchFolder wf = new WatchFolder().setObservedDirectory(observed_directory).setFileDetectionTime(20, TimeUnit.MILLISECONDS).setScanPeriod(50, TimeUnit.MILLISECONDS);
@@ -284,11 +287,114 @@ public class TestWatchfolder extends TestCase {
 		FileUtils.forceDelete(observed_directory);
 	}
 	
-	// TODO test callback_in_first_scan == true && test first detection (file present before start WF)
-	// TODO test push conf twice
-	// TODO test progressive growing file
-	// TODO check if policy is correctly applied
+	public void testPolicy() throws Exception {
+		File observed_directory = Files.createTempDirectory("test-watchfolder").toFile().getCanonicalFile();
+		
+		WatchFolder wf = new WatchFolder().setObservedDirectory(observed_directory).setFileDetectionTime(10, TimeUnit.MILLISECONDS).setScanPeriod(30, TimeUnit.MILLISECONDS);
+		
+		final File temp_file_nok = new File(observed_directory.getPath() + File.separator + "nok.txt");
+		
+		AtomicReference<Exception> last_error = new AtomicReference<Exception>(null);
+		
+		wf.registerCallback((root, activity_on_file, kind, detected_by) -> {
+			if (activity_on_file.equals(temp_file_nok)) {
+				last_error.set(new RuntimeException("Found blacklisted file " + activity_on_file.getName()));
+			}
+		});
+		
+		/**
+		 * Test blacklist
+		 */
+		assertNotNull(wf.getPolicy());
+		assertNotNull(wf.getPolicy().black_list_file_name);
+		assertFalse(wf.getPolicy().black_list_file_name.isEmpty());
+		wf.getPolicy().black_list_file_name.add(temp_file_nok.getName());
+		
+		FileUtils.write(temp_file_nok, "Just a test, you can delete it\r\n", StandardCharsets.UTF_8);
+		
+		Thread.sleep(wf.getScanPeriod(TimeUnit.MILLISECONDS) * 4);
+		
+		if (last_error.get() != null) {
+			last_error.get().printStackTrace();
+			fail("Error with last event");
+		}
+		
+		wf.close();
+		FileUtils.forceDelete(observed_directory);
+	}
 	
-	// TODO check all policies (in other test)
+	public void testConfiguration() throws Exception {
+		Factory f = new Factory();
+		
+		File conf_file = File.createTempFile("test-watchfolder", ".json");
+		
+		File observed_directory = Files.createTempDirectory("test-watchfolder").toFile().getCanonicalFile();
+		
+		JsonObject js_conf_test_wf = new JsonObject();
+		js_conf_test_wf.addProperty("observed_directory", observed_directory.getPath());
+		js_conf_test_wf.addProperty("file_detection_time", 10);
+		js_conf_test_wf.addProperty("scan_period", 100);
+		js_conf_test_wf.addProperty("search_in_subfolders", false);
+		js_conf_test_wf.addProperty("callback_in_first_scan", false);
+		
+		WatchFolder wf;
+		/*
+		 * Simple JS injection
+		 
+		wf = f.createGsonKit().getGson().fromJson(js_conf_test_wf, WatchFolder.class);
+		
+		assertEquals(observed_directory, wf.getObservedDirectory());
+		assertEquals(10, wf.getFileDetectionTime(TimeUnit.MILLISECONDS));
+		assertEquals(100, wf.getScanPeriod(TimeUnit.MILLISECONDS));
+		assertFalse(wf.isSearchInSubfolders());
+		assertFalse(wf.isCallbackInFirstScan());
+		assertTrue(wf.isScanInSymboliclinkDirs());
+		*/
+		
+		/**
+		 * Finalize main conf tree
+		 */
+		JsonObject js_conf_test = new JsonObject();
+		js_conf_test.add("wf", js_conf_test_wf);
+		
+		JsonObject js_conf = new JsonObject();
+		js_conf.add(TestConfiguration.class.getName(), js_conf_test);
+		
+		FileUtils.write(conf_file, js_conf.toString(), StandardCharsets.UTF_8);
+		
+		f.getConfigurator().addConfigurationFilesToInternalList(conf_file).scanImportedFilesAndUpdateConfigurations();
+		
+		TestConfiguration test_conf = f.create(TestConfiguration.class);
+		
+		assertNotNull(test_conf);
+		assertNotNull(test_conf.wf);
+		
+		wf = test_conf.wf;
+		
+		assertEquals(observed_directory, wf.getObservedDirectory());
+		assertEquals(10, wf.getFileDetectionTime(TimeUnit.MILLISECONDS));
+		assertEquals(100, wf.getScanPeriod(TimeUnit.MILLISECONDS));
+		assertFalse(wf.isSearchInSubfolders());
+		assertFalse(wf.isCallbackInFirstScan());
+		assertTrue(wf.isScanInSymboliclinkDirs());
+		
+		/**
+		 * Update conf
+		 */
+		js_conf_test_wf.addProperty("scan_period", 1000);
+		js_conf_test_wf.addProperty("scan_in_symboliclink_dirs", false);
+		
+		FileUtils.write(conf_file, js_conf.toString(), StandardCharsets.UTF_8);
+		f.getConfigurator().scanImportedFilesAndUpdateConfigurations(); // FIXME don't update ; why WF conf is done by Gson and not internaly (@see GsonIgnoreStrategy and remove Executor from blacklist)
+		// XXX and before/after don't be triggered
+		
+		assertEquals(observed_directory, wf.getObservedDirectory());
+		assertEquals(1000, wf.getScanPeriod(TimeUnit.MILLISECONDS));
+		assertFalse(wf.isScanInSymboliclinkDirs());
+		
+		// TODO start and test push conf twice
+	}
+	
+	// TODO test callback_in_first_scan == true <this not works : true is by default...> ; test first detection (file present before start WF)
 	
 }

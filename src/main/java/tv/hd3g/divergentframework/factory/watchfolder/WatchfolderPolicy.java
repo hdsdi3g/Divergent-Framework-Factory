@@ -110,6 +110,7 @@ public class WatchfolderPolicy {
 	/**
 	 * Empty/null = ignore
 	 * Case insensitive.
+	 * Set by setupRegularFiles
 	 */
 	public ArrayList<String> black_list_file_name;
 	

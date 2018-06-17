@@ -17,6 +17,7 @@
 package tv.hd3g.divergentframework.factory.configuration;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -401,8 +402,16 @@ class ClassConfigurator {
 				if (current_value != null) {
 					callbackUpdateAPIForRemovedObject(type, current_value);
 				}
-				
-				field.set(main_object_instance, gson_kit.getGson().fromJson(value, type));
+				try {
+					field.set(main_object_instance, gson_kit.getGson().fromJson(value, type));
+				} catch (InaccessibleObjectException e) {
+					if (value.isJsonObject()) {
+						log.fatal("Can't inject configuration in class " + type.getName() + " with this vars: " + value.getAsJsonObject().keySet().stream().collect(Collectors.toList()));
+					} else {
+						log.fatal("Can't inject configuration in class " + type.getName() + " with this json: " + value);
+					}
+					throw e;
+				}
 			}
 			
 			private void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback) {

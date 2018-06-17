@@ -602,6 +602,9 @@ public class WatchFolder {
 	 */
 	@OnBeforeUpdateConfiguration
 	private void beforeUpdateConfiguration() {
+		if (log.isDebugEnabled()) {
+			log.debug("Before update configuration for " + toString());
+		}
 		pending_configuration_update.set(true);
 		
 		stopAllWatchedDirectories();
@@ -611,6 +614,9 @@ public class WatchFolder {
 	private void afterUpdateConfiguration() {
 		if (closed) {
 			return;
+		}
+		if (log.isDebugEnabled()) {
+			log.debug("After update configuration for " + toString());
 		}
 		
 		pending_configuration_update.set(false);

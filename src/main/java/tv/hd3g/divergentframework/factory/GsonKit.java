@@ -17,6 +17,7 @@
 package tv.hd3g.divergentframework.factory;
 
 import java.awt.Color;
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -26,7 +27,9 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -221,6 +224,33 @@ public class GsonKit {
 			} catch (MalformedURLException e) {
 				throw new JsonParseException(json.getAsString(), e);
 			}
+		});
+		
+		/**
+		 * File
+		 */
+		registerGsonSimpleDeSerializer(File.class, File.class, src -> {
+			return new JsonPrimitive(src.getPath());
+		}, json -> {
+			return new File(json.getAsString());
+		});
+		
+		/**
+		 * Path (in default file system)
+		 */
+		registerGsonSimpleDeSerializer(Path.class, Path.class, src -> {
+			return new JsonPrimitive(src.toFile().getPath());
+		}, json -> {
+			return new File(json.getAsString()).toPath();
+		});
+		
+		/**
+		 * Date <-> unixtime
+		 */
+		registerGsonSimpleDeSerializer(Date.class, Date.class, src -> {
+			return new JsonPrimitive(src.getTime());
+		}, json -> {
+			return new Date(json.getAsLong());
 		});
 		
 		/**
