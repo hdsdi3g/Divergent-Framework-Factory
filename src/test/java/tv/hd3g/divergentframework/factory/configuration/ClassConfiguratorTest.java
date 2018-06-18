@@ -37,6 +37,10 @@ import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.Counters;
 import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.SubA;
 import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.SubA.SubB;
 import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub.SubC;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub2;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub2.Sub2A;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub2.Sub2A.Sub2B;
+import tv.hd3g.divergentframework.factory.configuration.demo.TMainSub2.Sub2C;
 
 public class ClassConfiguratorTest extends TestCase {
 	
@@ -359,7 +363,7 @@ public class ClassConfiguratorTest extends TestCase {
 			}
 		});
 		
-		TMainSub main = new TMainSub();
+		TMainSub2 main = new TMainSub2();
 		
 		final UUID uuid = UUID.randomUUID();
 		
@@ -377,7 +381,7 @@ public class ClassConfiguratorTest extends TestCase {
 			pw.println("                     uuid: \"" + uuid + "\"");
 		}).get("test");
 		
-		cc.configureNewObjectWithJson(TMainSub.class, main, conf_tree);
+		cc.configureNewObjectWithJson(TMainSub2.class, main, conf_tree);
 		
 		assertNotNull(main.sub_a);
 		assertNotNull(main.sub_a.get("a_1"));
@@ -387,9 +391,9 @@ public class ClassConfiguratorTest extends TestCase {
 		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_1").sub_c.get("c_1").uuid);
 		assertEquals(uuid, main.sub_a.get("a_1").sub_b.get("b_1").sub_c.get("c_1").uuid);
 		
-		SubA actual_a_1 = main.sub_a.get("a_1");
-		SubB actual_b_1 = main.sub_a.get("a_1").sub_b.get("b_1");
-		SubC actual_c_1 = main.sub_a.get("a_1").sub_b.get("b_1").sub_c.get("c_1");
+		Sub2A actual_a_1 = main.sub_a.get("a_1");
+		Sub2B actual_b_1 = main.sub_a.get("a_1").sub_b.get("b_1");
+		Sub2C actual_c_1 = main.sub_a.get("a_1").sub_b.get("b_1").sub_c.get("c_1");
 		
 		checkCountersTMainSub("Pass1", actual_a_1, 1, 0, 0, 0);
 		checkCountersTMainSub("Pass1", actual_b_1, 1, 0, 0, 0);
@@ -410,7 +414,7 @@ public class ClassConfiguratorTest extends TestCase {
 			pw.println("                     uuid: \"" + uuid + "\"");
 		}).get("test");
 		
-		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		cc.reconfigureActualObjectWithJson(TMainSub2.class, main, conf_tree);
 		
 		assertNotNull(main.sub_a);
 		assertNotNull(main.sub_a.get("a_1"));
@@ -420,7 +424,7 @@ public class ClassConfiguratorTest extends TestCase {
 		assertNotNull(main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1").uuid);
 		assertEquals(uuid, main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1").uuid);
 		
-		SubB actual_b_2 = main.sub_a.get("a_1").sub_b.get("b_2");
+		Sub2B actual_b_2 = main.sub_a.get("a_1").sub_b.get("b_2");
 		
 		assertEquals(actual_a_1, main.sub_a.get("a_1"));
 		assertNotSame(actual_b_1, main.sub_a.get("a_1").sub_b.get("b_2"));
@@ -450,7 +454,7 @@ public class ClassConfiguratorTest extends TestCase {
 			pw.println("                     uuid: \"" + uuid2 + "\"");// UPDATED
 		}).get("test");
 		
-		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		cc.reconfigureActualObjectWithJson(TMainSub2.class, main, conf_tree);
 		
 		checkCountersTMainSub("Pass3", main.sub_a.get("a_1"), 1, 2, 2, 0);
 		checkCountersTMainSub("Pass3", main.sub_a.get("a_1").sub_b.get("b_2"), 1, 1, 1, 0);
@@ -481,7 +485,7 @@ public class ClassConfiguratorTest extends TestCase {
 		actual_b_2 = main.sub_a.get("a_1").sub_b.get("b_2");
 		actual_c_1 = main.sub_a.get("a_1").sub_b.get("b_2").sub_c.get("c_1");
 		
-		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		cc.reconfigureActualObjectWithJson(TMainSub2.class, main, conf_tree);
 		
 		assertNotNull(main.sub_a);
 		assertNotNull(main.sub_a.get("a_1"));
@@ -531,7 +535,7 @@ public class ClassConfiguratorTest extends TestCase {
 			*/
 		}).get("test");
 		
-		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		cc.reconfigureActualObjectWithJson(TMainSub2.class, main, conf_tree);
 		
 		assertNotNull(main.sub_a.get("a_1").sub_b);
 		assertFalse(main.sub_a.get("a_1").sub_b.containsKey("b_2"));
@@ -556,6 +560,123 @@ public class ClassConfiguratorTest extends TestCase {
 		assertEquals(to_check.getClass().getSimpleName() + " " + message + " BeforeUpdate", expected_before_update, to_check.counter_BeforeUpdateConfiguration.get());
 		assertEquals(to_check.getClass().getSimpleName() + " " + message + " AfterUpdate", expected_after_update, to_check.counter_AfterUpdateConfiguration.get());
 		assertEquals(to_check.getClass().getSimpleName() + " " + message + " BeforeRemoved", expected_before_remove, to_check.counter_BeforeRemovedInConfiguration.get());
+	}
+	
+	public void testClassRussianDolls() throws IOException {
+		ClassConfigurator cc = new ClassConfigurator(gson_kit, c -> {
+			try {
+				return c.getConstructor().newInstance();
+			} catch (ReflectiveOperationException e) {
+				throw new RuntimeException(e);
+			}
+		});
+		
+		TMainSub main = new TMainSub();
+		
+		final UUID uuid = UUID.randomUUID();
+		
+		/**
+		 * Push tree
+		 */
+		JsonObject conf_tree = ConfigurationFileType.YAML.getContent(pw -> {
+			pw.println("test:");
+			pw.println("   sub_a:");// var
+			pw.println("         sub_b:");// var
+			pw.println("               sub_c:");// var
+			pw.println("                     uuid: \"" + uuid + "\"");
+		}).get("test");
+		
+		cc.configureNewObjectWithJson(TMainSub.class, main, conf_tree);
+		
+		assertNotNull(main.sub_a);
+		assertNotNull(main.sub_a.sub_b);
+		assertNotNull(main.sub_a.sub_b.sub_c);
+		assertNotNull(main.sub_a.sub_b.sub_c.uuid);
+		assertEquals(uuid, main.sub_a.sub_b.sub_c.uuid);
+		
+		SubA actual_a_1 = main.sub_a;
+		SubB actual_b_1 = main.sub_a.sub_b;
+		SubC actual_c_1 = main.sub_a.sub_b.sub_c;
+		
+		checkCountersTMainSub("Pass1", actual_a_1, 1, 0, 0, 0);
+		checkCountersTMainSub("Pass1", actual_b_1, 1, 0, 0, 0);
+		checkCountersTMainSub("Pass1", actual_c_1, 1, 0, 0, 0);
+		
+		/**
+		 * Update intermediate branch
+		 */
+		conf_tree = ConfigurationFileType.YAML.getContent(pw -> {
+			pw.println("test:");
+			pw.println("   sub_a:");// var
+			pw.println("         sub_b:");// var
+			pw.println("               sub_c:");// var
+			pw.println("                     uuid: \"" + uuid + "\"");
+			pw.println("               intermediate: 3");// var
+			pw.println("         intermediate: 2");// var
+			pw.println("   intermediate: 1");// var
+		}).get("test");
+		
+		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);// XXX why remove class before update ?! @see TestWatchfolder
+		
+		assertEquals(1, main.intermediate);
+		assertEquals(2, main.sub_a.intermediate);
+		assertEquals(3, main.sub_a.sub_b.intermediate);
+		assertEquals(uuid, main.sub_a.sub_b.sub_c.uuid);
+		
+		checkCountersTMainSub("Pass2", actual_a_1, 1, 1, 1, 0);
+		checkCountersTMainSub("Pass2", actual_b_1, 1, 0, 0, 1);
+		checkCountersTMainSub("Pass2", actual_c_1, 1, 0, 0, 0);
+		
+		actual_c_1 = main.sub_a.sub_b.sub_c;
+		checkCountersTMainSub("Pass2", actual_c_1, 1, 0, 0, 0);
+		
+		/**
+		 * Change last item
+		 */
+		UUID uuid2 = UUID.randomUUID();
+		conf_tree = ConfigurationFileType.YAML.getContent(pw -> {
+			pw.println("test:");
+			pw.println("   sub_a:");// var
+			pw.println("         sub_b:");// var
+			pw.println("               sub_c:");// var
+			pw.println("                     uuid: \"" + uuid2 + "\"");// UPDATED
+		}).get("test");
+		
+		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		
+		checkCountersTMainSub("Pass3", main.sub_a, 1, 2, 2, 0);
+		checkCountersTMainSub("Pass3", main.sub_a.sub_b, 1, 1, 1, 0);
+		checkCountersTMainSub("Pass3", main.sub_a.sub_b.sub_c, 1, 1, 1, 0);
+		assertEquals(uuid2, main.sub_a.sub_b.sub_c.uuid);
+		
+		/**
+		 * Delete leafs with nulls and Ignore policy.
+		 */
+		conf_tree = ConfigurationFileType.YAML.getContent(pw -> {
+			pw.println("test:");
+			pw.println("   sub_a:");// var
+			pw.println("         sub_b: null");// var
+			/*
+			pw.println("               sub_c:");// var
+			pw.println("                  c_1:");// map key, REMOVED, but not callbacked
+			pw.println("                     uuid: \"" + uuid2 + "\"");
+			
+			pw.println("            b_3:");// map key, NOT CHANGE
+			pw.println("               sub_c:");// var
+			pw.println("                  c_1:");// map key, NOT CHANGE
+			pw.println("                     uuid: \"" + uuid2 + "\"");
+			*/
+		}).get("test");
+		
+		cc.reconfigureActualObjectWithJson(TMainSub.class, main, conf_tree);
+		
+		assertNotNull(main.sub_a);
+		assertNull(main.sub_a.sub_b);
+		
+		checkCountersTMainSub("Pass5", main.sub_a, 1, 4, 4, 0);
+		checkCountersTMainSub("Pass5", actual_b_1, 1, 1, 1, 1);
+		checkCountersTMainSub("Pass5", actual_c_1, 1, 1, 1, 0);// Callback remove is not propaged
+		
 	}
 	
 }

@@ -35,6 +35,9 @@
 	<logger name="tv.hd3g.divergentframework.factory.watchfolder">
 		<level value="TRACE" />
 	</logger>
+	<logger name="tv.hd3g.divergentframework.factory.configuration.FieldDefinition">
+		<level value="TRACE" />
+	</logger>
 
 	<!-- Global/defalut definition, and level filter for some lib like Astyanax, Elasticsearch, Play... -->
 	<root>

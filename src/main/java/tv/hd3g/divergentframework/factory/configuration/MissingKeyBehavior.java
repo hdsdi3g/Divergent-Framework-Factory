@@ -14,11 +14,11 @@
  * Copyright (C) hdsdi3g for hd3g.tv 2018
  * 
 */
-package tv.hd3g.divergentframework.factory.watchfolder;
+package tv.hd3g.divergentframework.factory.configuration;
 
-import tv.hd3g.divergentframework.factory.SingleInstance;
-
-@SingleInstance
-public class TestConfiguration {
-	WatchFolder wf;
+/**
+ * Update behavior during push a new json configuration.
+ */
+enum MissingKeyBehavior {
+	REMOVE, IGNORE;
 }

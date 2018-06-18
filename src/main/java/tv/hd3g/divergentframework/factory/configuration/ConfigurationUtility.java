@@ -39,12 +39,11 @@ import com.google.gson.JsonObject;
 import tv.hd3g.divergentframework.factory.Factory;
 import tv.hd3g.divergentframework.factory.GsonKit;
 import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergeBehavior;
-import tv.hd3g.divergentframework.factory.Logtoolkit;
 
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// TODO2 add -regular- watcher
+	// TODO2 add -regular- watcher, retrieve directory activities and specific files, for specific types (ConfigurationFileType.CONFIG_FILE_EXTENTIONS)
 	
 	private final Factory factory;
 	private final GsonKit gson_kit;
@@ -73,17 +72,6 @@ public class ConfigurationUtility {
 		configured_types = new ConcurrentHashMap<>();
 		configuration_files = new ArrayList<>();
 		watched_configuration_files_and_dirs = new ArrayList<>();
-	}
-	
-	/**
-	 * @return null if it can't found class
-	 */
-	private Class<?> getClassByMnemonic(String mnemonic) {
-		if (class_mnemonics.containsKey(mnemonic)) {
-			return class_mnemonics.get(mnemonic);
-		} else {
-			return factory.getClassByName(mnemonic);
-		}
 	}
 	
 	/**
@@ -212,7 +200,16 @@ public class ConfigurationUtility {
 						return c_file.linked_file.equals(file);
 					}) == false;
 				}).map(file -> {
-					return new ConfigurationFile(file);
+					return new ConfigurationFile(file, mnemonic -> {
+						/**
+						 * @return null if it can't found class
+						 */
+						if (class_mnemonics.containsKey(mnemonic)) {
+							return class_mnemonics.get(mnemonic);
+						} else {
+							return factory.getClassByName(mnemonic);
+						}
+					});
 				}).map(file -> {
 					try {
 						/**
@@ -264,7 +261,7 @@ public class ConfigurationUtility {
 						try {
 							log.info("Found an updated config file: " + conf);
 							
-							conf.switchUpdateDate();
+							conf.switchUpdateStatus();
 							conf.parseFile().stream().forEach(set_updated_class_name -> {
 								JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
 								
@@ -324,85 +321,6 @@ public class ConfigurationUtility {
 		}
 		
 		return this;
-	}
-	
-	class ConfigurationFile {
-		final File linked_file;
-		long last_update_date;
-		final HashMap<Class<?>, JsonObject> config_tree_by_class;
-		
-		private ConfigurationFile(File linked_file) {
-			this.linked_file = linked_file;
-			last_update_date = 0;
-			config_tree_by_class = new HashMap<>();
-		}
-		
-		boolean isUpdated() {
-			return last_update_date != linked_file.lastModified();
-		}
-		
-		private void switchUpdateDate() {
-			last_update_date = linked_file.lastModified();
-		}
-		
-		/**
-		 * Don't update/sync main class config list, only reverberate real files content to Json trees.
-		 * @return set/updated class conf
-		 */
-		List<Class<?>> parseFile() throws IOException {
-			log.debug("Open conf file: " + linked_file);
-			HashMap<String, JsonObject> raw_file_content = ConfigurationFileType.getTypeByFilename(linked_file).getContent(linked_file);
-			
-			/**
-			 * Remove from current conf list the not present class in last configuration file content.
-			 */
-			config_tree_by_class.keySet().stream().filter(actual_configured_class -> {
-				return raw_file_content.keySet().stream().map(mnemonic -> {
-					return getClassByMnemonic(mnemonic);
-				}).noneMatch(new_configured_class -> {
-					return actual_configured_class.equals(new_configured_class);
-				});
-			}).collect(Collectors.toList()).forEach(class_to_remove -> {
-				config_tree_by_class.remove(class_to_remove);
-			});
-			
-			/**
-			 * Add/update new configurations for classes
-			 */
-			return raw_file_content.keySet().stream().map(mnemonic -> {
-				Class<?> target_class = getClassByMnemonic(mnemonic);
-				
-				if (target_class == null) {
-					log.warn("Configuration try to setup a not found class for name (or mnemonic) \"" + mnemonic + "\"");
-					return null;
-				}
-				
-				JsonObject class_conf_tree = raw_file_content.get(mnemonic);
-				
-				if (log.isTraceEnabled()) {
-					if (config_tree_by_class.containsKey(target_class)) {
-						log.trace("Update configuration for " + target_class + ": " + class_conf_tree.toString() + " in " + linked_file.getName());
-					} else {
-						log.trace("Found configuration for " + target_class + ": " + class_conf_tree.toString() + " in " + linked_file.getName());
-					}
-				}
-				
-				config_tree_by_class.put(target_class, class_conf_tree);
-				return target_class;
-			}).filter(file -> {
-				return file != null;
-			}).distinct().collect(Collectors.toList());
-			
-		}
-		
-		public String toString() {
-			if (last_update_date == 0) {
-				return linked_file.getPath() + ", just detected, (" + config_tree_by_class.size() + " classes)";
-			} else {
-				return linked_file.getPath() + ", updated " + Logtoolkit.dateLog(last_update_date) + " (" + config_tree_by_class.size() + " classes)";
-			}
-		}
-		
 	}
 	
 	public boolean isClassIsConfigured(Class<?> reference_class) {

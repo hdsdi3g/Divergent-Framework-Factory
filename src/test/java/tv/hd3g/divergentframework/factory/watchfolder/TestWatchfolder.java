@@ -358,13 +358,13 @@ public class TestWatchfolder extends TestCase {
 		js_conf_test.add("wf", js_conf_test_wf);
 		
 		JsonObject js_conf = new JsonObject();
-		js_conf.add(TestConfiguration.class.getName(), js_conf_test);
+		js_conf.add(WFConfigurationDummy.class.getName(), js_conf_test);
 		
 		FileUtils.write(conf_file, js_conf.toString(), StandardCharsets.UTF_8);
 		
 		f.getConfigurator().addConfigurationFilesToInternalList(conf_file).scanImportedFilesAndUpdateConfigurations();
 		
-		TestConfiguration test_conf = f.create(TestConfiguration.class);
+		WFConfigurationDummy test_conf = f.create(WFConfigurationDummy.class);
 		
 		assertNotNull(test_conf);
 		assertNotNull(test_conf.wf);
@@ -385,11 +385,17 @@ public class TestWatchfolder extends TestCase {
 		js_conf_test_wf.addProperty("scan_in_symboliclink_dirs", false);
 		
 		FileUtils.write(conf_file, js_conf.toString(), StandardCharsets.UTF_8);
-		f.getConfigurator().scanImportedFilesAndUpdateConfigurations(); // FIXME don't update ; why WF conf is done by Gson and not internaly (@see GsonIgnoreStrategy and remove Executor from blacklist)
-		// XXX and before/after don't be triggered
+		f.getConfigurator().scanImportedFilesAndUpdateConfigurations();// XXX why it close an recreate WF ? (another thing with Generic or not ?)
 		
+		assertNotNull(test_conf.wf);
+		
+		wf = test_conf.wf;
+		assertNotNull(wf);
 		assertEquals(observed_directory, wf.getObservedDirectory());
+		assertEquals(10, wf.getFileDetectionTime(TimeUnit.MILLISECONDS));
 		assertEquals(1000, wf.getScanPeriod(TimeUnit.MILLISECONDS));
+		assertFalse(wf.isSearchInSubfolders());
+		assertFalse(wf.isCallbackInFirstScan());
 		assertFalse(wf.isScanInSymboliclinkDirs());
 		
 		// TODO start and test push conf twice

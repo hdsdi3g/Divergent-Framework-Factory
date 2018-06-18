@@ -16,31 +16,32 @@
 */
 package tv.hd3g.divergentframework.factory.configuration.demo;
 
-import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterInjectConfiguration;
 import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
 import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeRemovedInConfiguration;
 import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.TargetGenericClassType;
 
-public class TMainSub {
+public class TMainSub {// TODO test this !
 	
-	@TargetGenericClassType(SubA.class)
-	public Map<String, SubA> sub_a;
+	public SubA sub_a;
+	public int intermediate;
+	public ThreadPoolExecutor booby_trap;
 	
 	public static class SubA extends Counters {
 		
-		@TargetGenericClassType(SubB.class)
-		public Map<String, SubB> sub_b;
+		public SubB sub_b;
+		public int intermediate;
+		public ThreadPoolExecutor booby_trap;
 		
 		public static class SubB extends Counters {
 			
-			@TargetGenericClassType(SubC.class)
-			public Map<String, SubC> sub_c;
-			
+			public SubC sub_c;
+			public int intermediate;
+			public ThreadPoolExecutor booby_trap;
 		}
 	}
 	
