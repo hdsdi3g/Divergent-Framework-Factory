@@ -51,39 +51,10 @@ public class ConfigurationUtilityTest extends TestCase {
 		
 		conf_u.addConfigurationFilesToInternalList(temp_conf_file);
 		
-		conf_u.scanImportedFilesAndUpdateConfigurations();
+		conf_u.scanImportedFiles();
 		
 		assertTrue(conf_u.isClassIsConfigured(SingleCar.class));
 		assertFalse(conf_u.isClassIsConfigured(TMainSub.class));
-		
-		SingleCar car = new SingleCar();
-		
-		assertNull(car.getColor());
-		assertEquals(0f, car.getSize());
-		
-		conf_u.addNewClassInstanceToConfigure(car, SingleCar.class);
-		
-		assertEquals("blue", car.getColor());
-		assertEquals(1.0f, car.getSize());
-		
-		/**
-		 * Update conf, save it, load it, update instance.
-		 */
-		conf_tree.addProperty("size", 2);
-		
-		/**
-		 * Wait a long time for the new file date will be different.
-		 */
-		Thread.sleep(1000);
-		
-		FileUtils.write(temp_conf_file, gson.getGsonPretty().toJson(conf_root), "UTF-8");
-		
-		conf_u.scanImportedFilesAndUpdateConfigurations();
-		
-		assertEquals("blue", car.getColor());
-		assertEquals(2.0f, car.getSize());
-		
-		temp_conf_file.delete();
 	}
 	
 	public void testMnemonic() throws Exception {
@@ -118,7 +89,7 @@ public class ConfigurationUtilityTest extends TestCase {
 		
 		conf_u.addConfigurationFilesToInternalList(temp_conf_file);
 		
-		conf_u.scanImportedFilesAndUpdateConfigurations();
+		conf_u.scanImportedFiles();
 		
 		assertTrue(conf_u.isClassIsConfigured(SingleCar.class));
 		assertFalse(conf_u.isClassIsConfigured(TMainSub.class));

@@ -23,9 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import tv.hd3g.divergentframework.factory.configuration.annotations.ConfigurableValidator;
 import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterInjectConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeRemovedInConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
 import tv.hd3g.divergentframework.factory.configuration.annotations.TargetGenericClassType;
 import tv.hd3g.divergentframework.factory.configuration.validation.NotEmptyNotZeroValidator;
 
@@ -50,31 +47,16 @@ public class SingleCar {
 	private Wheel default_wheel;
 	
 	public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
-	public final AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
-	public final AtomicInteger counter_BeforeUpdateConfiguration = new AtomicInteger();
 	
 	public enum WheelType {
 		tractor, formula1, suv, sedan, truck;
-	}
-	
-	public final AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
-	
-	@OnBeforeRemovedInConfiguration
-	private void callbackOnBeforeRemovedInConfiguration() {
-		counter_BeforeRemovedInConfiguration.getAndIncrement();
 	}
 	
 	public static class Wheel {
 		public int size;
 		public WheelType type;
 		
-		public final AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
 		public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
-		
-		@OnBeforeRemovedInConfiguration
-		private void callbackOnBeforeRemovedInConfiguration() {
-			counter_BeforeRemovedInConfiguration.getAndIncrement();
-		}
 		
 		@OnAfterInjectConfiguration
 		private void callbackOnAfterInjectConfiguration() {
@@ -150,16 +132,6 @@ public class SingleCar {
 	@OnAfterInjectConfiguration
 	private void callbackOnAfterInjectConfiguration() {
 		counter_AfterInjectConfiguration.getAndIncrement();
-	}
-	
-	@OnAfterUpdateConfiguration
-	private void callbackOnAfterUpdateConfiguration() {
-		counter_AfterUpdateConfiguration.getAndIncrement();
-	}
-	
-	@OnBeforeUpdateConfiguration
-	private void callbackOnBeforeUpdateConfiguration() {
-		counter_BeforeUpdateConfiguration.getAndIncrement();
 	}
 	
 }

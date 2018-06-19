@@ -21,11 +21,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterInjectConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeRemovedInConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
 
-public class TMainSub {// TODO test this !
+public class TMainSub {
 	
 	public SubA sub_a;
 	public int intermediate;
@@ -51,28 +48,10 @@ public class TMainSub {// TODO test this !
 	
 	public static abstract class Counters {
 		public final AtomicInteger counter_AfterInjectConfiguration = new AtomicInteger();
-		public final AtomicInteger counter_AfterUpdateConfiguration = new AtomicInteger();
-		public final AtomicInteger counter_BeforeUpdateConfiguration = new AtomicInteger();
-		public final AtomicInteger counter_BeforeRemovedInConfiguration = new AtomicInteger();
-		
-		@OnBeforeRemovedInConfiguration
-		public void callbackOnBeforeRemovedInConfiguration() {
-			counter_BeforeRemovedInConfiguration.getAndIncrement();
-		}
 		
 		@OnAfterInjectConfiguration
 		public void callbackOnAfterInjectConfiguration() {
 			counter_AfterInjectConfiguration.getAndIncrement();
-		}
-		
-		@OnAfterUpdateConfiguration
-		public void callbackOnAfterUpdateConfiguration() {
-			counter_AfterUpdateConfiguration.getAndIncrement();
-		}
-		
-		@OnBeforeUpdateConfiguration
-		public void callbackOnBeforeUpdateConfiguration() {
-			counter_BeforeUpdateConfiguration.getAndIncrement();
 		}
 		
 	}

@@ -43,8 +43,6 @@ import tv.hd3g.divergentframework.factory.GsonKit.KeyValueNullContentMergeBehavi
 public class ConfigurationUtility {
 	private static Logger log = Logger.getLogger(ConfigurationUtility.class);
 	
-	// TODO2 add -regular- watcher, retrieve directory activities and specific files, for specific types (ConfigurationFileType.CONFIG_FILE_EXTENTIONS)
-	
 	private final Factory factory;
 	private final GsonKit gson_kit;
 	private final HashMap<String, Class<?>> class_mnemonics;
@@ -146,10 +144,11 @@ public class ConfigurationUtility {
 	}
 	
 	/**
-	 * With watched_configuration_files_and_dirs, update content and internal content of configuration_files. Do regulary this.
+	 * With watched_configuration_files_and_dirs, update content and internal content of configuration_files.
+	 * Do not update actual instanced objects
 	 * @return this
 	 */
-	public ConfigurationUtility scanImportedFilesAndUpdateConfigurations() {
+	public ConfigurationUtility scanImportedFiles() {
 		synchronized (watched_configuration_files_and_dirs) {
 			List<File> last_current_founded_files = watched_configuration_files_and_dirs.stream().flatMap(file -> {
 				if (file.isFile()) {
@@ -253,15 +252,10 @@ public class ConfigurationUtility {
 						return last_current_founded_files.stream().anyMatch(file -> {
 							return c_file.linked_file.equals(file);
 						});
-					}).filter(c_file -> {
-						return c_file.isUpdated();
-					}).peek(file -> {
-						log.trace("!!!!" + file);
 					}).forEach(conf -> {
 						try {
 							log.info("Found an updated config file: " + conf);
 							
-							conf.switchUpdateStatus();
 							conf.parseFile().stream().forEach(set_updated_class_name -> {
 								JsonObject new_config_for_class = conf.config_tree_by_class.get(set_updated_class_name);
 								
@@ -292,34 +286,11 @@ public class ConfigurationUtility {
 						return all_actual_configured_classes.contains(current_configured_class) == false;
 					}).collect(Collectors.toList()).forEach(class_not_actually_configured -> {
 						log.debug("Remove configuration tree for " + class_not_actually_configured);
-						configured_types.remove(class_not_actually_configured).afterRemovedConf();
+						configured_types.remove(class_not_actually_configured);
 					});
-					
-					/**
-					 * Update all current configured classes
-					 */
-					if (class_conf_to_update.isEmpty() == false) {
-						if (log.isTraceEnabled()) {
-							log.trace("Update previously configured classes " + class_conf_to_update);
-						} else if (log.isDebugEnabled()) {
-							log.debug("Update previously configured classes " + class_conf_to_update.keySet());
-						}
-						
-						class_conf_to_update.forEach((c_e, new_class_configuration) -> {
-							if (log.isDebugEnabled()) {
-								if (log.isTraceEnabled()) {
-									log.trace("Update all configured instances for " + c_e + " with conf " + new_class_configuration);
-								} else {
-									log.debug("Update all configured instances for " + c_e);
-								}
-							}
-							c_e.updateInstances(new_class_configuration);
-						});
-					}
 				}
 			}
 		}
-		
 		return this;
 	}
 	

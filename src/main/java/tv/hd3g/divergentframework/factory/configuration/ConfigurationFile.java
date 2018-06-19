@@ -27,14 +27,10 @@ import org.apache.log4j.Logger;
 
 import com.google.gson.JsonObject;
 
-import tv.hd3g.divergentframework.factory.Logtoolkit;
-
 class ConfigurationFile {
 	private static Logger log = Logger.getLogger(ConfigurationFile.class);
 	
 	final File linked_file;
-	private long last_update_date;
-	private long last_file_size;
 	
 	final HashMap<Class<?>, JsonObject> config_tree_by_class;
 	private final Function<String, Class<?>> classByMnemonicResolver;
@@ -49,18 +45,7 @@ class ConfigurationFile {
 			throw new NullPointerException("\"classByMnemonicResolver\" can't to be null");
 		}
 		
-		last_update_date = 0;
-		last_file_size = -1;
 		config_tree_by_class = new HashMap<>();
-	}
-	
-	boolean isUpdated() {
-		return last_update_date != linked_file.lastModified() | last_file_size != linked_file.length();
-	}
-	
-	void switchUpdateStatus() {
-		last_update_date = linked_file.lastModified();
-		last_file_size = linked_file.length();
 	}
 	
 	/**
@@ -115,12 +100,7 @@ class ConfigurationFile {
 	
 	public String toString() {
 		String class_names = config_tree_by_class.keySet().stream().map(c_class -> c_class.getSimpleName()).collect(Collectors.joining(", "));
-		
-		if (last_update_date == 0) {
-			return linked_file.getPath() + ", just detected, for " + class_names;
-		} else {
-			return linked_file.getPath() + ", updated " + Logtoolkit.dateLog(last_update_date) + "(" + last_file_size + " bytes) for " + class_names;
-		}
+		return linked_file.getPath() + ", just detected, for " + class_names;
 	}
 	
 }

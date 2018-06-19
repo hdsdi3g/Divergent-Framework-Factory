@@ -41,9 +41,6 @@ import org.apache.log4j.Logger;
 
 import tv.hd3g.divergentframework.factory.Logtoolkit;
 import tv.hd3g.divergentframework.factory.configuration.annotations.ConfigurableValidator;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeRemovedInConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
 import tv.hd3g.divergentframework.factory.configuration.validation.FileIsDirectoryAndExistsValidator;
 import tv.hd3g.divergentframework.factory.configuration.validation.ForbiddenConfiguratorValidator;
 import tv.hd3g.divergentframework.factory.configuration.validation.NotEmptyNotZeroValidator;
@@ -53,7 +50,7 @@ public class WatchFolder {
 	private static Logger log = Logger.getLogger(WatchFolder.class);
 	
 	private final ArrayList<WatchfolderEvent> callbacks;
-	private final ConcurrentHashMap<File, WatchedDirectory> watched_directories; // XXX external storage
+	private final ConcurrentHashMap<File, WatchedDirectory> watched_directories; // TODO2 external storage
 	private final AtomicBoolean pending_configuration_update;
 	@ConfigurableValidator(ForbiddenConfiguratorValidator.class)
 	private volatile boolean closed;
@@ -577,11 +574,8 @@ public class WatchFolder {
 	}
 	
 	public synchronized WatchFolder setObservedDirectory(File observed_directory) throws IOException {
-		if (this.observed_directory != null & observed_directory != null) {
-			if (this.observed_directory.equals(observed_directory) == false) {
-				beforeUpdateConfiguration();
-				afterUpdateConfiguration();
-			}
+		if (this.observed_directory != null) {
+			throw new RuntimeException("\"observed_directory\" was already set");
 		}
 		
 		if (observed_directory == null) {
@@ -598,82 +592,14 @@ public class WatchFolder {
 	}
 	
 	/**
-	 * Do a clean stop
-	 */
-	@OnBeforeUpdateConfiguration
-	private void beforeUpdateConfiguration() {
-		if (log.isDebugEnabled()) {
-			log.debug("Before update configuration for " + toString());
-		}
-		pending_configuration_update.set(true);
-		
-		stopAllWatchedDirectories();
-	}
-	
-	@OnAfterUpdateConfiguration
-	private void afterUpdateConfiguration() {
-		if (closed) {
-			return;
-		}
-		if (log.isDebugEnabled()) {
-			log.debug("After update configuration for " + toString());
-		}
-		
-		pending_configuration_update.set(false);
-		
-		if (observed_directory == null) {
-			throw new NullPointerException("observed_directory can't to be null");
-		} else {
-			/**
-			 * Search the previous parent dir
-			 */
-			File parent = watched_directories.reduceKeys(10_000, (l, r) -> {
-				if (l.getPath().startsWith(r.getPath())) {
-					return r;
-				} else if (l.equals(r)) {
-					return l;
-				} else if (r.getPath().startsWith(l.getPath())) {
-					return l;
-				} else if (l.getParentFile().equals(r.getParentFile())) {
-					return l.getParentFile();
-				} else {
-					log.warn("Invalid compare: " + l + " <-> " + r);
-					return l;
-				}
-			});
-			
-			if (observed_directory.equals(parent) == false) {
-				watched_directories.clear();
-				if (callbacks.isEmpty() == false) {
-					executor.execute(() -> {
-						if (closed) {
-							return;
-						}
-						pushNewDirectory(observed_directory, true);
-					});
-				}
-			} else {
-				/**
-				 * Keep the actual path tree, and restart all scans
-				 */
-				watched_directories.values().stream().forEach(w_d -> {
-					w_d.pending_next_update = sch_service.submit(() -> {
-						try {
-							w_d.update();
-						} catch (Exception e) {
-							log.error("Can't update " + w_d.directory + ", remove scan on it for " + internalToString(), e);
-							cancelOldDirectory(w_d.directory);
-						}
-					});
-				});
-			}
-		}
-	}
-	
-	/**
 	 * Blocking
+	 * Will no touch to internal sch_service and executor, just clean active an current task for this watchfolder.
 	 */
-	private void stopAllWatchedDirectories() {
+	public synchronized void close() {
+		log.info("Ask to stop watchfolder " + toString());
+		
+		closed = true;
+		
 		List<CompletableFuture<Void>> cancel_tasks = watched_directories.values().stream().map(watched_dir -> {
 			return watched_dir.cancelNextScan();
 		}).collect(Collectors.toList());
@@ -692,18 +618,7 @@ public class WatchFolder {
 		} catch (InterruptedException | ExecutionException e) {
 			throw new RuntimeException("Can't cancel some tasks", e);
 		}
-	}
-	
-	/**
-	 * Will no touch to internal sch_service and executor, just clean active an current task for this watchfolder.
-	 */
-	@OnBeforeRemovedInConfiguration
-	public synchronized void close() {
-		log.info("Ask to stop watchfolder " + toString());
 		
-		closed = true;
-		
-		stopAllWatchedDirectories();
 		callbacks.forEach(c -> {
 			c.onStop(observed_directory, this);
 		});

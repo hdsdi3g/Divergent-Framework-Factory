@@ -118,7 +118,7 @@ public class FactoryTest extends TestCase {
 		GsonKit gson = f.createGsonKit();
 		FileUtils.write(temp_conf_file, gson.getGsonPretty().toJson(conf_root), "UTF-8");
 		
-		f.getConfigurator().addConfigurationFilesToInternalList(temp_conf_file).scanImportedFilesAndUpdateConfigurations();
+		f.getConfigurator().addConfigurationFilesToInternalList(temp_conf_file).scanImportedFiles();
 		
 		/**
 		 * Create object with injected conf

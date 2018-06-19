@@ -21,8 +21,6 @@ import java.util.ArrayList;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
-import tv.hd3g.divergentframework.factory.GsonKit;
-
 class ConfiguredClass<T> {
 	
 	private final ClassConfigurator class_configurator;
@@ -57,24 +55,6 @@ class ConfiguredClass<T> {
 		class_configurator.configureNewObjectWithJson(target_class, instance, actual_class_configuration);
 		
 		created_instances.add(instance);
-	}
-	
-	void afterRemovedConf() {
-		actual_class_configuration = new JsonObject();
-		created_instances.forEach(instance -> {
-			class_configurator.removeObjectConfiguration(target_class, instance);
-		});
-	}
-	
-	void updateInstances(JsonObject new_class_configuration) {
-		JsonObject reconfiguration_json = actual_class_configuration.deepCopy();
-		
-		GsonKit.jsonMerge(reconfiguration_json, new_class_configuration, GsonKit.KeyValueNullContentMergeBehavior.KEEP);
-		
-		created_instances.forEach(instance -> {
-			class_configurator.reconfigureActualObjectWithJson(target_class, instance, reconfiguration_json);
-		});
-		actual_class_configuration = reconfiguration_json;
 	}
 	
 	public String toString() {

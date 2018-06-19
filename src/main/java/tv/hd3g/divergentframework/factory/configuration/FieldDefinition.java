@@ -78,7 +78,7 @@ class FieldDefinition {
 	}
 	
 	@SuppressWarnings("unchecked")
-	void setValue(Object main_object_instance, JsonElement value, MissingKeyBehavior missing_key_behavior) throws JsonSyntaxException, IllegalArgumentException, IllegalAccessException {
+	void setValue(Object main_object_instance, JsonElement value) throws JsonSyntaxException, IllegalArgumentException, IllegalAccessException {
 		Object current_value = field.get(main_object_instance);
 		
 		if (target_generic_class_type != null) {
@@ -121,7 +121,6 @@ class FieldDefinition {
 							current_object = current_list.get(pos);
 							
 							if (newer_object.equals(current_object) == false) {
-								callbackUpdateAPIForRemovedObject(target_generic_class_type, current_object);
 								current_list.set(pos, newer_object);
 							} else {
 								/**
@@ -134,7 +133,6 @@ class FieldDefinition {
 					}
 					
 					for (int pos = newer_list.size(); pos < current_list.size(); pos++) {
-						callbackUpdateAPIForRemovedObject(target_generic_class_type, current_list.get(pos));
 						current_list.remove(pos);
 					}
 					
@@ -144,7 +142,6 @@ class FieldDefinition {
 					
 					current_list.removeIf(item -> {
 						if (item.equals(new_item) == false) {
-							callbackUpdateAPIForRemovedObject(target_generic_class_type, item);
 							return true;
 						}
 						return false;
@@ -180,39 +177,8 @@ class FieldDefinition {
 				} else if (value.isJsonObject()) {
 					JsonObject jo_value = value.getAsJsonObject();
 					
-					if (missing_key_behavior == MissingKeyBehavior.REMOVE) {
-						current_map.keySet().removeIf(key -> {
-							if (jo_value.has((String) key) == false) {
-								callbackUpdateAPIForRemovedObject(target_generic_class_type, current_map.get(key));
-								return true;
-							}
-							return false;
-						});
-					}
-					
 					jo_value.entrySet().forEach(entry -> {
-						JsonElement sub_item = entry.getValue();
-						if (current_map.containsKey(entry.getKey())) {
-							if (sub_item.isJsonObject()) {
-								if (sub_item.getAsJsonObject().size() == 0) {
-									/**
-									 * No sub items, no update.
-									 */
-								} else {
-									class_definition.class_configurator.reconfigureActualObjectWithJson(target_generic_class_type, current_map.get(entry.getKey()), sub_item.getAsJsonObject());
-								}
-							} else if (sub_item.isJsonNull()) {
-								/**
-								 * Don't put null item in map, but remove it.
-								 */
-								callbackUpdateAPIForRemovedObject(target_generic_class_type, current_map.get(entry.getKey()));
-								current_map.remove(entry.getKey());
-							} else if (sub_item.isJsonPrimitive() | sub_item.isJsonArray()) {
-								current_map.put(entry.getKey(), gson_kit.getGson().fromJson(sub_item, target_generic_class_type));
-							}
-						} else {
-							current_map.put(entry.getKey(), createNewSubItemInGenericObject(sub_item));
-						}
+						current_map.put(entry.getKey(), createNewSubItemInGenericObject(entry.getValue()));
 					});
 					
 					field.set(main_object_instance, current_map);
@@ -221,9 +187,6 @@ class FieldDefinition {
 			}
 		}
 		
-		if (current_value != null) {
-			callbackUpdateAPIForRemovedObject(type, current_value);
-		}
 		try {
 			String trace_message = null;
 			if (log.isTraceEnabled()) {
@@ -290,14 +253,6 @@ class FieldDefinition {
 			}
 			throw e;
 		}
-	}
-	
-	private void callbackUpdateAPIForRemovedObject(Class<?> from_type, Object removed_instance_to_callback) {
-		if (class_definition.class_configurator.isClassIsBlacklisted(from_type)) {
-			return;
-		}
-		log.debug("Remove " + from_type);
-		class_definition.class_configurator.getFrom(from_type).callbackOnBeforeRemovedInConfiguration(removed_instance_to_callback);
 	}
 	
 	private Object createNewSubItemInGenericObject(JsonElement value) {

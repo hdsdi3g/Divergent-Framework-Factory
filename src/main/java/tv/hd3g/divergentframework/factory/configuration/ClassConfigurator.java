@@ -49,7 +49,7 @@ class ClassConfigurator {
 		class_definitions = new ConcurrentHashMap<>();
 	}
 	
-	ClassDefinition getFrom(Class<?> from_type) {
+	ClassDefinition getClassDefinitionFrom(Class<?> from_type) {
 		return class_definitions.computeIfAbsent(from_type, type -> {
 			return new ClassDefinition(type, this);
 		});
@@ -96,34 +96,7 @@ class ClassConfigurator {
 			return;
 		}
 		log.debug("Configure " + from_type + " with " + configuration);
-		getFrom(from_type).setObjectConfiguration(new_created_instance, configuration, MissingKeyBehavior.REMOVE).callbackOnAfterInjectConfiguration(new_created_instance);
-	}
-	
-	/**
-	 * @param new_configuration if empty, do nothing
-	 */
-	void reconfigureActualObjectWithJson(Class<?> from_type, Object instance_to_update, JsonObject new_configuration) {
-		if (isClassIsBlacklisted(from_type)) {
-			log.debug("Can't configure " + from_type + " (internaly blacklisted)");
-			return;
-		} else if (new_configuration.size() == 0) {
-			return;
-		}
-		
-		log.debug("Reconfigure " + from_type + " with " + new_configuration);
-		getFrom(from_type).callbackOnBeforeUpdateConfiguration(instance_to_update).setObjectConfiguration(instance_to_update, new_configuration, MissingKeyBehavior.IGNORE).callbackOnAfterUpdateConfiguration(instance_to_update);
-	}
-	
-	/**
-	 * @param configuration if empty, do nothing
-	 */
-	void removeObjectConfiguration(Class<?> from_type, Object instance_to_callback) {
-		if (isClassIsBlacklisted(from_type)) {
-			log.debug("Can't configure " + from_type + " (internaly blacklisted)");
-			return;
-		}
-		log.debug("Unconfigure " + from_type);
-		getFrom(from_type).callbackOnBeforeRemovedInConfiguration(instance_to_callback);
+		getClassDefinitionFrom(from_type).setObjectConfiguration(new_created_instance, configuration).callbackOnAfterInjectConfiguration(new_created_instance);
 	}
 	
 }

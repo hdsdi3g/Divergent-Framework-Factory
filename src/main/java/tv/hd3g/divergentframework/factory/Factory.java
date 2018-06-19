@@ -137,7 +137,7 @@ public class Factory {
 			throw new IOException(class_mnemonics_file + " (class_mnemonics_file) can't to be put in directory_configuration directory (" + directory_configuration + ")");
 		}
 		
-		configurator.loadMnemonicClassNameListFromFile(class_mnemonics_file).addConfigurationFilesToInternalList(directory_configuration).scanImportedFilesAndUpdateConfigurations();
+		configurator.loadMnemonicClassNameListFromFile(class_mnemonics_file).addConfigurationFilesToInternalList(directory_configuration).scanImportedFiles();
 	}
 	
 	/**

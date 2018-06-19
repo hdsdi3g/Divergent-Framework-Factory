@@ -17,22 +17,9 @@
 package tv.hd3g.divergentframework.factory.watchfolder;
 
 import tv.hd3g.divergentframework.factory.SingleInstance;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
 
 @SingleInstance
 public class WFConfigurationDummy {
 	WatchFolder wf;
-	
-	// XXX remove this debug things
-	@OnBeforeUpdateConfiguration
-	void onBeforeUpdate() {
-		System.out.println("BEFORE UPDATE: wf=" + wf.hashCode());
-	}
-	
-	@OnAfterUpdateConfiguration
-	void onAfterUpdate() {
-		System.out.println("AFTER UPDATE: wf=" + +wf.hashCode());
-	}
 	
 }

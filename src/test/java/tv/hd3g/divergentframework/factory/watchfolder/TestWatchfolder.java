@@ -362,7 +362,7 @@ public class TestWatchfolder extends TestCase {
 		
 		FileUtils.write(conf_file, js_conf.toString(), StandardCharsets.UTF_8);
 		
-		f.getConfigurator().addConfigurationFilesToInternalList(conf_file).scanImportedFilesAndUpdateConfigurations();
+		f.getConfigurator().addConfigurationFilesToInternalList(conf_file).scanImportedFiles();
 		
 		WFConfigurationDummy test_conf = f.create(WFConfigurationDummy.class);
 		
@@ -378,27 +378,6 @@ public class TestWatchfolder extends TestCase {
 		assertFalse(wf.isCallbackInFirstScan());
 		assertTrue(wf.isScanInSymboliclinkDirs());
 		
-		/**
-		 * Update conf
-		 */
-		js_conf_test_wf.addProperty("scan_period", 1000);
-		js_conf_test_wf.addProperty("scan_in_symboliclink_dirs", false);
-		
-		FileUtils.write(conf_file, js_conf.toString(), StandardCharsets.UTF_8);
-		f.getConfigurator().scanImportedFilesAndUpdateConfigurations();// XXX why it close an recreate WF ? (another thing with Generic or not ?)
-		
-		assertNotNull(test_conf.wf);
-		
-		wf = test_conf.wf;
-		assertNotNull(wf);
-		assertEquals(observed_directory, wf.getObservedDirectory());
-		assertEquals(10, wf.getFileDetectionTime(TimeUnit.MILLISECONDS));
-		assertEquals(1000, wf.getScanPeriod(TimeUnit.MILLISECONDS));
-		assertFalse(wf.isSearchInSubfolders());
-		assertFalse(wf.isCallbackInFirstScan());
-		assertFalse(wf.isScanInSymboliclinkDirs());
-		
-		// TODO start and test push conf twice
 	}
 	
 	// TODO test callback_in_first_scan == true <this not works : true is by default...> ; test first detection (file present before start WF)

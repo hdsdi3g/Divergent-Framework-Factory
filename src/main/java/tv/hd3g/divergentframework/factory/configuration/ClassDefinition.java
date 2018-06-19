@@ -33,9 +33,6 @@ import com.google.gson.JsonSyntaxException;
 
 import tv.hd3g.divergentframework.factory.GsonKit;
 import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterInjectConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnAfterUpdateConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeRemovedInConfiguration;
-import tv.hd3g.divergentframework.factory.configuration.annotations.OnBeforeUpdateConfiguration;
 
 class ClassDefinition {
 	private static Logger log = Logger.getLogger(ClassDefinition.class);
@@ -47,9 +44,6 @@ class ClassDefinition {
 	private final HashMap<String, FieldDefinition> field_definitions;
 	
 	private final List<Method> allCallbacksOnAfterInjectConfiguration;
-	private final List<Method> allCallbacksOnBeforeRemovedInConfiguration;
-	private final List<Method> allCallbacksOnAfterUpdateConfiguration;
-	private final List<Method> allCallbacksOnBeforeUpdateConfiguration;
 	
 	ClassDefinition(Class<?> target_class, ClassConfigurator configurator) {
 		this.target_class = target_class;
@@ -96,30 +90,24 @@ class ClassDefinition {
 		}).collect(Collectors.toList());
 		
 		Predicate<Method> annotationOnAfterInjectConfiguration = m -> m.getAnnotation(OnAfterInjectConfiguration.class) != null;
-		Predicate<Method> annotationOnBeforeRemovedInConfiguration = m -> m.getAnnotation(OnBeforeRemovedInConfiguration.class) != null;
-		Predicate<Method> annotationOnAfterUpdateConfiguration = m -> m.getAnnotation(OnAfterUpdateConfiguration.class) != null;
-		Predicate<Method> annotationOnBeforeUpdateConfiguration = m -> m.getAnnotation(OnBeforeUpdateConfiguration.class) != null;
-		Predicate<Method> allAnnotations = annotationOnAfterInjectConfiguration.or(annotationOnBeforeRemovedInConfiguration).or(annotationOnAfterUpdateConfiguration).or(annotationOnBeforeUpdateConfiguration);
 		
 		Predicate<Method> parameterCountNotNull = m -> m.getParameterCount() > 0;
-		all_methods.stream().filter(parameterCountNotNull).filter(allAnnotations).forEach(m -> {
+		all_methods.stream().filter(parameterCountNotNull).filter(annotationOnAfterInjectConfiguration).forEach(m -> {
 			log.error("Can't apply a configuration annotation in a method with some parameter(s), on method " + m.getName() + " in " + target_class);
 		});
-		if (all_methods.stream().filter(parameterCountNotNull).anyMatch(allAnnotations)) {
+		if (all_methods.stream().filter(parameterCountNotNull).anyMatch(annotationOnAfterInjectConfiguration)) {
 			throw new RuntimeException("Invalid method(s) callback annotation definition for " + target_class);
 		}
 		
 		allCallbacksOnAfterInjectConfiguration = all_methods.stream().filter(annotationOnAfterInjectConfiguration).collect(Collectors.toList());
-		allCallbacksOnBeforeRemovedInConfiguration = all_methods.stream().filter(annotationOnBeforeRemovedInConfiguration).collect(Collectors.toList());
-		allCallbacksOnAfterUpdateConfiguration = all_methods.stream().filter(annotationOnAfterUpdateConfiguration).collect(Collectors.toList());
-		allCallbacksOnBeforeUpdateConfiguration = all_methods.stream().filter(annotationOnBeforeUpdateConfiguration).collect(Collectors.toList());
 	}
 	
 	/**
 	 * Only update instance fields declared in configuration_tree.
 	 * Don't callback class annotations.
+	 * @param previous_configuration can be null
 	 */
-	public ClassDefinition setObjectConfiguration(Object instance, JsonObject configuration_tree, MissingKeyBehavior update_policy) {
+	public ClassDefinition setObjectConfiguration(Object instance, JsonObject configuration_tree) {
 		if (target_class.isInstance(instance) == false) {
 			throw new ClassCastException("Invalid class type between " + target_class + " and object instance " + instance.getClass());
 		}
@@ -139,10 +127,10 @@ class ClassDefinition {
 			}
 			
 			if (log.isTraceEnabled()) {
-				log.trace("Push conf for a " + target_class + " class, MissingKeyBehavior: " + target_class + ", with " + configuration_tree);
+				log.trace("Push conf for a " + target_class + " class, MissingKeyBehavior: " + target_class);
 			}
 			try {
-				f_def.setValue(instance, field_conf, update_policy);
+				f_def.setValue(instance, field_conf);
 			} catch (JsonSyntaxException | IllegalAccessException e) {
 				throw new RuntimeException("Can't configure " + f_def.field.getName() + " in " + target_class.getSimpleName() + " configured with " + field_conf.toString(), e);
 			}
@@ -152,39 +140,6 @@ class ClassDefinition {
 	
 	ClassDefinition callbackOnAfterInjectConfiguration(Object instance) {
 		allCallbacksOnAfterInjectConfiguration.stream().forEach(m -> {
-			try {
-				m.invoke(instance);
-			} catch (Exception e) {
-				log.error("Can't callback " + instance.getClass().getName() + "." + m.getName() + "()", e);
-			}
-		});
-		return this;
-	}
-	
-	ClassDefinition callbackOnBeforeRemovedInConfiguration(Object instance) {
-		allCallbacksOnBeforeRemovedInConfiguration.stream().forEach(m -> {
-			try {
-				m.invoke(instance);
-			} catch (Exception e) {
-				log.error("Can't callback " + instance.getClass().getName() + "." + m.getName() + "()", e);
-			}
-		});
-		return this;
-	}
-	
-	ClassDefinition callbackOnAfterUpdateConfiguration(Object instance) {
-		allCallbacksOnAfterUpdateConfiguration.stream().forEach(m -> {
-			try {
-				m.invoke(instance);
-			} catch (Exception e) {
-				log.error("Can't callback " + instance.getClass().getName() + "." + m.getName() + "()", e);
-			}
-		});
-		return this;
-	}
-	
-	ClassDefinition callbackOnBeforeUpdateConfiguration(Object instance) {
-		allCallbacksOnBeforeUpdateConfiguration.stream().forEach(m -> {
 			try {
 				m.invoke(instance);
 			} catch (Exception e) {
