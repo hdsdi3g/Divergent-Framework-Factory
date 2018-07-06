@@ -2,13 +2,13 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>tv.hd3g.divergentframework</groupId>
-  <artifactId>factory</artifactId>
+  <groupId>tv.hd3g</groupId>
+  <artifactId>divergentframework-factory</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>Divergent Framework Factory</name>
-  <url>http://maven.apache.org</url>
+  <url>https://github.com/hdsdi3g/Divergent-Framework-Factory</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -62,11 +62,19 @@
   	<url>https://hd3g.tv</url>
   </organization>
   <scm>
-  	<url>https://github.com/hdsdi3g/Divergent-Framework-Factory</url>
+  	<url>https://github.com/hdsdi3g/Divergent-Framework-Factory.git</url>
   	<developerConnection>hdsdi3g</developerConnection>
   </scm>
   <issueManagement>
   	<url>https://github.com/hdsdi3g/Divergent-Framework-Factory/issues</url>
   	<system>GitHub</system>
   </issueManagement>
+  
+	<licenses>
+	  <license>
+	    <name>GNU Lesser General Public License, Version 3</name>
+	    <url>https://www.gnu.org/licenses/lgpl.txt</url>
+	    <distribution>repo</distribution>
+	  </license>
+	</licenses>
 </project>
