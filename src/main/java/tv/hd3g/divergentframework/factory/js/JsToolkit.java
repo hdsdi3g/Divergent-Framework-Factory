@@ -48,6 +48,11 @@ import jdk.nashorn.api.scripting.NashornException;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 
+/**
+ * TODO switch to graalvm
+ * @deprecated
+ */
+@Deprecated
 public class JsToolkit {
 	private static Logger log = Logger.getLogger(JsToolkit.class);
 	
@@ -152,10 +157,10 @@ public class JsToolkit {
 			int line = line_number;
 			if (line > -1) {
 				if (line - 3 > -1) {
-					System.out.println((line - 2) + "  | " + file_lines.get(line - 3));
+					System.out.println(line - 2 + "  | " + file_lines.get(line - 3));
 				}
 				if (line - 2 > -1) {
-					System.out.println((line - 1) + "  | " + file_lines.get(line - 2));
+					System.out.println(line - 1 + "  | " + file_lines.get(line - 2));
 				}
 				
 				System.out.println(line + "  > " + file_lines.get(line - 1));
@@ -166,9 +171,9 @@ public class JsToolkit {
 				}
 				
 				if (line < file_lines.size()) {
-					System.out.println((line + 1) + "  | " + file_lines.get(line));
+					System.out.println(line + 1 + "  | " + file_lines.get(line));
 					if (line + 1 < file_lines.size()) {
-						System.out.println((line + 2) + "  | " + file_lines.get(line + 1));
+						System.out.println(line + 2 + "  | " + file_lines.get(line + 1));
 					}
 				}
 			}
@@ -208,7 +213,7 @@ public class JsToolkit {
 		if (raw_js_attribute == null) {
 			return null;
 		}
-		if ((raw_js_attribute instanceof ScriptObjectMirror) == false) {
+		if (raw_js_attribute instanceof ScriptObjectMirror == false) {
 			return raw_js_attribute;
 		}
 		ScriptObjectMirror js_attribute = (ScriptObjectMirror) raw_js_attribute;
@@ -346,7 +351,7 @@ public class JsToolkit {
 		Object raw_js_interface = eval(file_lines, source_name);
 		if (raw_js_interface == null) {
 			throw new NullPointerException("Javascript return null content.");
-		} else if ((raw_js_interface instanceof ScriptObjectMirror) == false) {
+		} else if (raw_js_interface instanceof ScriptObjectMirror == false) {
 			throw new ScriptException("Javascript don't return a complex item (ScriptObjectMirror)");
 		}
 		
